@@ -161,11 +161,11 @@ class CycleGANModel(BaseModel):
     def forward(self):
 
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B, self.fake_B_embeddings, self.loss_G_AB_1 = self.netG_AB(self.real_A, self.real_B, True)  # G_A(A)
-        self.rec_A, self.rec_A_embeddings, self.loss_G_BA_1 = self.netG_BA(self.fake_B, self.real_A, True)  # G_B(G_A(A))
+        self.fake_B, self.fake_B_embeddings, self.loss_G_AB_1 = self.netG_AB(self.real_A, None, True)  # G_A(A)
+        self.rec_A, self.rec_A_embeddings, self.loss_G_BA_1 = self.netG_BA(self.fake_B, None, True)  # G_B(G_A(A))
 
-        self.fake_A, self.fake_A_embeddings, self.loss_G_BA_2 = self.netG_BA(self.real_B, self.real_A, True)  # G_B(B)
-        self.rec_B, self.rec_B_embeddings, self.loss_G_AB_2 = self.netG_AB(self.fake_A, self.real_B, True)  # G_A(G_B(B))
+        self.fake_A, self.fake_A_embeddings, self.loss_G_BA_2 = self.netG_BA(self.real_B, None, True)  # G_B(B)
+        self.rec_B, self.rec_B_embeddings, self.loss_G_AB_2 = self.netG_AB(self.fake_A, None, True)  # G_A(G_B(B))
 
 
     def backward_D_basic(self, netD, real_sent, fake_sent):
@@ -188,9 +188,8 @@ class CycleGANModel(BaseModel):
         loss_D = (loss_D_real + loss_D_fake) * 0.5 * self.opt.lambda_D
 
         loss_D.backward()
-
-
         return loss_D#.item()
+
 
     def backward_D_AB(self):
         """Calculate GAN loss for discriminator D_A"""
@@ -246,46 +245,10 @@ class CycleGANModel(BaseModel):
             self.loss_cycle_BAB = torch.tensor([0.0]).to(self.device)
 
 
-        if lambda_C_1 > 0.0:
-            # Backward cycle loss || G_B(B) - G_A(A)||
-            loss_cycle_C_1 = self.criterionCycle(self.fake_A_embeddings,
-                                                 self.fake_B_embeddings,
-                                                 size_vector) * lambda_C_1
-        else:
-            loss_cycle_C_1 = torch.tensor([0.0]).to(self.device)
-
-
-        if lambda_C_2 != 0:
-            # Backward cycle loss || G_B(B) - G_A(A)||
-            loss_cycle_C_2_1 = self.criterionCycle(self.fake_A_embeddings,
-                                                   self.rec_B_embeddings,
-                                                   size_vector) * lambda_C_2
-
-            # Backward cycle loss || G_B(B) - G_A(A)||
-            loss_cycle_C_2_2 = self.criterionCycle(self.fake_B_embeddings,
-                                                   self.rec_A_embeddings,
-                                                   size_vector) * lambda_C_2
-        else:
-            loss_cycle_C_2_1 = torch.tensor([0.0]).to(self.device)
-            loss_cycle_C_2_2 = torch.tensor([0.0]).to(self.device)
-
-
-        if lambda_C_3 > 0.0:
-            # Backward cycle loss || G_B(B) - G_A(A)||
-            loss_cycle_C_3 = self.criterionCycle(self.rec_A_embeddings,
-                                                 self.rec_B_embeddings,
-                                                 size_vector) * lambda_C_3
-        else:
-            loss_cycle_C_3 = torch.tensor([0.0]).to(self.device)
-
-
         # 'weight for embedding loss (fakeA -> recB, fakeB -> recA)')  # mixed loss
         # 'weight for embedding loss (recA -> recB)')  # mixed loss (dubbio translation)
 
         # combined loss and calculate gradients
-        self.loss_cycle_ABA = self.loss_cycle_ABA + loss_cycle_C_1 + loss_cycle_C_2_2 + loss_cycle_C_3
-        self.loss_cycle_BAB = self.loss_cycle_BAB + loss_cycle_C_1 + loss_cycle_C_2_1 + loss_cycle_C_3
-
         self.loss_G = self.loss_G_AB + self.loss_G_BA + self.loss_cycle_ABA + self.loss_cycle_BAB  # + self.loss_idt_A.item() + self.loss_idt_B.item()
 
         self.loss_G.backward()
@@ -306,7 +269,7 @@ class CycleGANModel(BaseModel):
         self.netD_BA.train()
 
         # forward
-        self.forward()  # compute fake images and reconstruction images.
+        self.forward()  
         gc.collect()
 
         self.set_requires_grad([self.netD_AB, self.netD_BA], False)
@@ -347,7 +310,7 @@ class CycleGANModel(BaseModel):
         gc.collect()
 
 
-    def evaluate(self, sentences_file="eval_sentences.txt", distance_file="distances.txt", mutual_avg_file="mutual_distances.txt", mutual_avg_file_A="mutual_distances_A.txt", mutual_avg_file_B="mutual_distances_B.txt", top_k_file="top_k.txt", sacre_file="sacre_bleu.tsv"):
+    def evaluate(self, sentences_file="eval_sentences.txt", sacre_file="sacre_bleu.tsv"):
         #logging.info("\n\nEvaluating...")
 
         self.netG_AB.module.eval()
@@ -367,64 +330,6 @@ class CycleGANModel(BaseModel):
                 sentences_file.write('%s\n' % str1)  # save the message
                 sentences_file.write('%s\n\n' % str2)  # save the message
 
-        distances = sklearn.metrics.pairwise_distances(self.fake_A_embeddings.cpu().detach().numpy(),
-                                                       self.fake_B_embeddings.cpu().detach().numpy(),
-                                                       metric='cosine',
-                                                       n_jobs=-1)
-
-        triang = np.triu(distances)
-        np.fill_diagonal(triang, 0)
-        mutual_distances = np.sum(triang) / np.count_nonzero(triang)
-        with open(mutual_avg_file, "a") as mutual_avg_f:
-            mutual_avg_f.write(str(mutual_distances) + '\n')
-
-        with open(distance_file, "a") as distances_file:
-            for i in range(len(distances)):
-                distances_file.write(str(distances[i][i]) + '\n')
-
-        distances_fake_A = sklearn.metrics.pairwise_distances(self.fake_A_embeddings.cpu().detach().numpy(),
-                                                              self.fake_A_embeddings.cpu().detach().numpy(),
-                                                              metric='cosine',
-                                                              n_jobs=-1)
-        triang = np.triu(distances_fake_A)
-        np.fill_diagonal(triang, 0)
-        mutual_distances = np.sum(triang) / np.count_nonzero(triang)
-        with open(mutual_avg_file_A, "a") as mutual_avg_f:
-            mutual_avg_f.write(str(mutual_distances) + '\n')
-
-
-
-        distances_fake_B = sklearn.metrics.pairwise_distances(self.fake_B_embeddings.cpu().detach().numpy(),
-                                                              self.fake_B_embeddings.cpu().detach().numpy(),
-                                                              metric='cosine',
-                                                              n_jobs=-1)
-        triang = np.triu(distances_fake_B)
-        np.fill_diagonal(triang, 0)
-        mutual_distances = np.sum(triang) / np.count_nonzero(triang)
-        with open(mutual_avg_file_B, "a") as mutual_avg_f:
-            mutual_avg_f.write(str(mutual_distances) + '\n')
-        #with open(distance_file, "a") as distances_file:
-        #   distances_file.write(distances+"\n")
-
-        dim = len(distances)
-        top_k = np.zeros(dim, dtype=np.float)
-        for i in range(dim):
-
-            lower = 0
-            for j in range(len(distances[i])):
-                if i != j and distances[i][i] > distances[i][j]:
-                    lower += 1
-            top_k[lower] += 1
-
-        with open(top_k_file, "a") as top_file:
-            tot = 0
-            for i in range(dim):
-                top_k[i] = top_k[i] / dim * 100
-                tot += top_k[i]
-                top_file.write('Top ' + str(i + 1) + ': ' + str(tot) + '%\n')
-        # mi salvo in un dict per ogni frase quanto lontano è l'embedding reale (quanti ce ne sono più vicini) e faccio una classifica
-        # per vedere quanti hanno l'embedding reale nella top 1, top 2 e cosi via (cumulativo)
-        # salvo info in un file, per ogni epoca
 
         bleu_fake_A = sacrebleu.raw_corpus_bleu(self.fake_A, [self.real_A]).score
         bleu_rec_A = sacrebleu.raw_corpus_bleu(self.rec_A, [self.real_A]).score
@@ -432,7 +337,6 @@ class CycleGANModel(BaseModel):
         bleu_rec_B = sacrebleu.raw_corpus_bleu(self.rec_B, [self.real_B]).score
 
         with open(sacre_file, "a") as sacre_file:
-            for i in range(dim):
                 sacre_file.write(str(bleu_fake_A) + '\t' + str(bleu_rec_A) + '\t' +str(bleu_fake_B) + '\t' +str(bleu_rec_B) + '\n')
 
         self.netG_AB.module.train()

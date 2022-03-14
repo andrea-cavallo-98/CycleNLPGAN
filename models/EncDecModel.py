@@ -85,7 +85,7 @@ class EncDecModel(nn.Module):
             if target_sentences is not None:
                 return output_sentences, sentence_embedding, outputs.loss
             else:
-                return output_sentences, sentence_embedding
+                return output_sentences, sentence_embedding, 0.0
         else:
             del embeddings
 

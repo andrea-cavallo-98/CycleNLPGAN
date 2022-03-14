@@ -15,6 +15,68 @@ import urllib.request
 
 
 
+
+class MonolingualDataset(BaseDataset):
+    """
+    Mono-lingual dataset
+
+    """
+
+    def __init__(self, opt, path):
+        """
+        Parallel sentences dataset reader to train student model given a teacher model
+        :param opt: options used to create and read the dataset
+        """
+        BaseDataset.__init__(self, opt)
+        self.path = path
+        self.data = []
+
+
+    def load_data(self, seed=25):
+        """
+        Reads in a tab-seperated .txt/.csv/.tsv or .gz file. The different columns contain the different translations of the sentence in the first column
+
+        :param filepath: Filepath to the file
+        :param weight: If more that one dataset is loaded with load_data: With which frequency should data be sampled from this dataset?
+        :param max_sentences: Max number of lines to be read from filepath
+        :param max_sentence_length: Skip the example if one of the sentences is has more characters than max_sentence_length
+        :return:
+        """
+
+        filepath = self.path
+        sentences = []
+
+        with open(filepath, encoding='utf8') as fIn:
+
+            logging.info("Load " + filepath)
+
+            count = 0
+            for line in fIn:
+                sentences.append(line.split("/t")[1])
+                count += 1
+                
+        self.data = sentences
+
+        random.seed(seed)
+        random.shuffle(self.data)
+
+
+    def __len__(self):
+        return len(self.data)
+
+
+    def __getitem__(self, idx):
+
+        return self.data[idx]
+
+
+
+
+
+
+
+
+
 class ParallelSentencesDataset(BaseDataset):
     """
     This dataset reader can be used to read-in parallel sentences, i.e., it reads in a file with tab-seperated sentences with the same

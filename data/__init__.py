@@ -16,7 +16,7 @@ import os
 import torch.utils.data
 
 from .BaseDataset import BaseDataset
-from .ParallelSentencesDataset import ParallelSentencesDataset
+from .ParallelSentencesDataset import ParallelSentencesDataset, MonolingualDataset
 
 
 def find_dataset_using_name(dataset_type):
@@ -103,11 +103,11 @@ class CustomDatasetDataLoader():
         self.eval_perc = opt.eval_percentage
         self.test_perc = opt.test_percentage
 
-        dataset_class = find_dataset_using_name(opt.dataset_mode)
-        self.dataset = dataset_class(opt, self.train_perc, self.eval_perc, self.test_perc)
-        self.dataset.load_data(dataset_type)
+        #dataset_class = find_dataset_using_name(opt.dataset_mode)
+        self.dataset = MonolingualDataset(opt, "./content/ALT-Parallel-Corpus-20191206/data_en.txt")
+        #self.dataset = dataset_class(opt, self.train_perc, self.eval_perc, self.test_perc)
+        self.dataset.load_data()
 
-        print("dataset [%s] was created" % type(self.dataset).__name__)
         if dataloader is None:
             n_threads = int(opt.num_threads)
             shuffle = not opt.serial_batches

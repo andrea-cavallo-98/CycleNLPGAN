@@ -61,68 +61,14 @@ if __name__ == '__main__':
 
     if not opt.continue_train:
 
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_distance.txt"), "w", encoding='utf8')
-        fw.close()
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_sentence.txt"), "w", encoding='utf8')
-        fw.close()
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_top_k.txt"), "w", encoding='utf8')
-        fw.close()
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance.txt"), "w", encoding='utf8')
-        fw.close()
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance_A.txt"), "w", encoding='utf8')
-        fw.close()
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance_B.txt"), "w", encoding='utf8')
-        fw.close()
-
         for j, eval_data in enumerate(eval_dataset.dataloader):  # inner loop within one epoch
             if j > 20:
                 break
             model.set_input(eval_data)  # unpack data from dataset and apply preprocessing
-            model.evaluate(sentences_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sentence.txt"),
-                           distance_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_distance.txt"),
-                           mutual_avg_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance.txt"),
-                           mutual_avg_file_A=os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance_A.txt"),
-                           mutual_avg_file_B=os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance_B.txt"),
-                           top_k_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_top_k.txt"),
-                           sacre_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"),
-                           )
+            model.evaluate(sentences_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sentence.txt"), 
+                            sacre_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"))
             gc.collect()
 
-        with open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance.txt"), "r", encoding='utf8') as mutual_file:
-            avg = mutual_file.read().split("\n")
-            avg = [float(e) for e in avg if e != ""]
-            avg = sum(avg) / len(avg)
-        logging.info("Average mutual distance:" + str(avg))
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_mutual_distance.tsv"), "a", encoding='utf8')
-        fw.write("0\t0\t" + str(avg) + "\n")
-        fw.close()
-
-        with open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance_A.txt"), "r", encoding='utf8') as mutual_file:
-            avg = mutual_file.read().split("\n")
-            avg = [float(e) for e in avg if e != ""]
-            avg = sum(avg) / len(avg)
-        logging.info("Average mutual distance A:" + str(avg))
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_mutual_distance_A.tsv"), "a", encoding='utf8')
-        fw.write("0\t0\t" + str(avg) + "\n")
-        fw.close()
-
-        with open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_mutual_distance_B.txt"), "r", encoding='utf8') as mutual_file:
-            avg = mutual_file.read().split("\n")
-            avg = [float(e) for e in avg if e != ""]
-            avg = sum(avg) / len(avg)
-        logging.info("Average mutual distance B:" + str(avg))
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_mutual_distance_B.tsv"), "a", encoding='utf8')
-        fw.write("0\t0\t" + str(avg) + "\n")
-        fw.close()
-
-        with open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_distance.txt"), "r", encoding='utf8') as distance_file:
-            avg = distance_file.read().split("\n")
-            avg = [float(e) for e in avg if e != ""]
-            avg = sum(avg)/len(avg)
-        logging.info("Average distance:" + str(avg))
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_distance.tsv"), "a", encoding='utf8')
-        fw.write("0\t0\t" + str(avg) + "\n")
-        fw.close()
 
         with open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"), "r", encoding='utf8') as sacre_file:
             lines = sacre_file.read().split("\n")
@@ -187,33 +133,10 @@ if __name__ == '__main__':
 
             if opt.eval_freq is not None and total_iters % opt.eval_freq == 0:
                 sentences_filename = str(epoch)+"_"+str(total_iters)+"_eval_sentences.txt"
-                distance_filename = str(epoch)+"_"+str(total_iters)+"_distances.txt"
-                top_k_filename = str(epoch)+"_"+str(total_iters)+"_top_k.txt"
-                mutual_filename = str(epoch)+"_"+str(total_iters)+"_mutual_distances.txt"
-                mutual_filename_A = str(epoch)+"_"+str(total_iters)+"_mutual_distances_A.txt"
-                mutual_filename_B = str(epoch)+"_"+str(total_iters)+"_mutual_distances_B.txt"
                 sacre_filename = str(epoch)+"_"+str(total_iters)+"_sacre.tsv"
-
                 sentences_filename = os.path.join(opt.checkpoints_dir, opt.name, sentences_filename)
-                distance_filename = os.path.join(opt.checkpoints_dir, opt.name, distance_filename)
-                top_k_filename = os.path.join(opt.checkpoints_dir, opt.name, top_k_filename)
-                mutual_filename = os.path.join(opt.checkpoints_dir, opt.name, mutual_filename)
-                mutual_filename_A = os.path.join(opt.checkpoints_dir, opt.name, mutual_filename_A)
-                mutual_filename_B = os.path.join(opt.checkpoints_dir, opt.name, mutual_filename_B)
                 sacre_filename = os.path.join(opt.checkpoints_dir, opt.name, sacre_filename)
 
-                fw = open(distance_filename, "w", encoding='utf8')
-                fw.close()
-                fw = open(sentences_filename, "w", encoding='utf8')
-                fw.close()
-                fw = open(top_k_filename, "w", encoding='utf8')
-                fw.close()
-                fw = open(mutual_filename, "w", encoding='utf8')
-                fw.close()
-                fw = open(mutual_filename_A, "w", encoding='utf8')
-                fw.close()
-                fw = open(mutual_filename_B, "w", encoding='utf8')
-                fw.close()
                 fw = open(sacre_filename, "w", encoding='utf8')
                 fw.close()
 
@@ -221,45 +144,8 @@ if __name__ == '__main__':
                     if j > 20:
                         break
                     model.set_input(eval_data)  # unpack data from dataset and apply preprocessing
-                    model.evaluate(sentences_file=sentences_filename, distance_file=distance_filename, mutual_avg_file=mutual_filename, mutual_avg_file_A=mutual_filename_A, mutual_avg_file_B=mutual_filename_B,
-                                   top_k_file=top_k_filename, sacre_file=sacre_filename)
+                    model.evaluate(sentences_file=sentences_filename, sacre_file=sacre_filename)
 
-                with open(mutual_filename, "r", encoding='utf8') as mutual_file:
-                    avg = mutual_file.read().split("\n")
-                    avg = [float(e) for e in avg if e != ""]
-                    avg = sum(avg) / len(avg)
-                logging.info("Average mutual distance:" + str(avg))
-                fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_mutual_distance.tsv"), "a", encoding='utf8')
-                fw.write(str(epoch) + "\t" + str(total_iters) + "\t" + str(avg) + "\n")
-                fw.close()
-
-                with open(mutual_filename_A, "r", encoding='utf8') as mutual_file:
-                    avg = mutual_file.read().split("\n")
-                    avg = [float(e) for e in avg if e != ""]
-                    avg = sum(avg) / len(avg)
-                logging.info("Average mutual distance A:" + str(avg))
-                fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_mutual_distance_A.tsv"), "a", encoding='utf8')
-                fw.write(str(epoch) + "\t" + str(total_iters) + "\t" + str(avg) + "\n")
-                fw.close()
-
-                with open(mutual_filename_B, "r", encoding='utf8') as mutual_file:
-                    avg = mutual_file.read().split("\n")
-                    avg = [float(e) for e in avg if e != ""]
-                    avg = sum(avg) / len(avg)
-                logging.info("Average mutual distance B:" + str(avg))
-                fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_mutual_distance_B.tsv"), "a", encoding='utf8')
-                fw.write(str(epoch)+"\t"+str(total_iters)+"\t" + str(avg) + "\n")
-                fw.close()
-
-
-                with open(distance_filename, "r", encoding='utf8') as distance_file:
-                    avg = distance_file.read().split("\n")
-                    avg = [float(e) for e in avg if e != ""]
-                    avg = sum(avg) / len(avg)
-                logging.info("Average distance:" + str(avg))
-                fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_distance.tsv"), "a", encoding='utf8')
-                fw.write(str(epoch)+"\t"+str(total_iters)+"\t" + str(avg) + "\n")
-                fw.close()
 
                 with open(sacre_filename, "r", encoding='utf8') as sacre_file:
                     lines = sacre_file.read().split("\n")
@@ -285,26 +171,8 @@ if __name__ == '__main__':
         model.save_networks('latest')
         model.save_networks(epoch)
 
-        sentences_filename = os.path.join(opt.checkpoints_dir, opt.name, "eval_sentences.txt")
-        distance_filename = os.path.join(opt.checkpoints_dir, opt.name, "distances.txt")
-        top_k_filename = os.path.join(opt.checkpoints_dir, opt.name, "top_k.txt")
-        mutual_filename = os.path.join(opt.checkpoints_dir, opt.name, "mutual_distances.txt")
-        mutual_filename_A = os.path.join(opt.checkpoints_dir, opt.name, "mutual_distances_A.txt")
-        mutual_filename_B = os.path.join(opt.checkpoints_dir, opt.name, "mutual_distances_B.txt")
         sacre_filename = os.path.join(opt.checkpoints_dir, opt.name, "sacre.tsv")
 
-        with open(distance_filename, "a", encoding='utf8') as distance_file:
-            distance_file.write("NEW EPOCH:\n")
-        with open(top_k_filename, "a", encoding='utf8') as top_file:
-            top_file.write("NEW EPOCH:\n")
-        with open(sentences_filename, "a", encoding='utf8') as sentences_file:
-            sentences_file.write("NEW EPOCH:\n")
-        with open(mutual_filename, "a", encoding='utf8') as mutual_file:
-            mutual_file.write("NEW EPOCH:\n")
-        with open(mutual_filename_A, "a", encoding='utf8') as mutual_file:
-            mutual_file.write("NEW EPOCH:\n")
-        with open(mutual_filename_B, "a", encoding='utf8') as mutual_file:
-            mutual_file.write("NEW EPOCH:\n")
         with open(sacre_filename, "a", encoding='utf8') as sacre_file:
             sacre_file.write("NEW EPOCH:\n")
 
@@ -312,18 +180,6 @@ if __name__ == '__main__':
             model.set_input(eval_data)  # unpack data from dataset and apply preprocessing
             model.evaluate(sentences_file=sentences_filename, distance_file=distance_filename, mutual_avg_file=mutual_filename,  mutual_avg_file_A=mutual_filename_A, mutual_avg_file_B=mutual_filename_B, top_k_file=top_k_filename,sacre_file=sacre_filename)
 
-        with open(distance_filename, "a", encoding='utf8') as distance_file:
-            distance_file.write("\n\n\n\n")
-        with open(top_k_filename, "a", encoding='utf8') as top_file:
-            top_file.write("\n\n\n\n")
-        with open(sentences_filename, "a", encoding='utf8') as sentences_file:
-            sentences_file.write("\n\n\n\n")
-        with open(mutual_filename, "a", encoding='utf8') as mutual_file:
-            mutual_file.write("\n\n\n\n")
-        with open(mutual_filename_A, "a", encoding='utf8') as mutual_file:
-            mutual_file.write("\n\n\n\n")
-        with open(mutual_filename_B, "a", encoding='utf8') as mutual_file:
-            mutual_file.write("\n\n\n\n")
         with open(sacre_filename, "a", encoding='utf8') as sacre_file:
             sacre_file.write("\n\n\n\n")
 
