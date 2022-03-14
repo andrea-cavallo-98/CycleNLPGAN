@@ -40,13 +40,13 @@ if __name__ == '__main__':
     model.setup(opt)  # regular setup: load and print networks; create schedulers
 
     #train_dataset, eval_dataset, test_dataset = create_dataset(opt, model)  # create a dataset given opt.dataset_mode and other options
-    train_dataset, eval_dataset = create_dataset(opt, model)
-    dataset_size = len(train_dataset)    # get the number of images in the dataset.
+    train_dataset_A, train_dataset_B, eval_dataset_A, eval_dataset_B = create_dataset(opt, model)
+    dataset_size = len(train_dataset_A)    # get the number of images in the dataset.
     logging.info('The number of training sentences = %d' % dataset_size)
-    logging.info('The number of evaluation sentences = %d' % len(eval_dataset))
+    logging.info('The number of evaluation sentences = %d' % len(eval_dataset_A))
    # logging.info('The number of test sentences = %d' % len(test_dataset))
-    logging.info('The number of training batches = %d' % len(train_dataset.dataloader))
-    logging.info('The number of evaluation batches = %d' % len(eval_dataset.dataloader))
+    logging.info('The number of training batches = %d' % len(train_dataset_A.dataloader))
+    logging.info('The number of evaluation batches = %d' % len(eval_dataset_A.dataloader))
     #logging.info('The number of test batches = %d' % len(test_dataset.dataloader))
 
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
@@ -54,17 +54,21 @@ if __name__ == '__main__':
 
 
     n = round(opt.iter_count/opt.batch_size) #NBatch totali
-    n -= (opt.epoch_count-1)*(round(len(train_dataset)/opt.batch_size))
+    n -= (opt.epoch_count-1)*(round(len(train_dataset_A)/opt.batch_size))
     previous_suffix = None
 
 
 
     if not opt.continue_train:
 
-        for j, eval_data in enumerate(eval_dataset.dataloader):  # inner loop within one epoch
-            if j > 20:
-                break
-            model.set_input(eval_data)  # unpack data from dataset and apply preprocessing
+        eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
+        eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
+
+        for j in range(20):  # inner loop within one epoch
+
+            eval_data_A = eval_dataset_A_iter.__next__()
+            eval_data_B = eval_dataset_B_iter.__next__()
+            model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
             model.evaluate(sentences_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sentence.txt"), 
                             sacre_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"))
             gc.collect()
@@ -97,8 +101,14 @@ if __name__ == '__main__':
 
         visualizer.print_current_lr(epoch, model.get_learning_rate())
 
-        for i, data in enumerate(train_dataset.dataloader):  # inner loop within one epoch
+        train_dataset_A_iter = enumerate(train_dataset_A.dataloader)
+        train_dataset_B_iter = enumerate(train_dataset_B.dataloader)
+
+        for i in range(n):  # inner loop within one epoch
             epoch_iter += opt.batch_size
+
+            data_A = train_dataset_A_iter.__next__()
+            data_B = train_dataset_B_iter.__next__()
 
             if epoch == opt.epoch_count:
                 if n > 0:
@@ -106,7 +116,7 @@ if __name__ == '__main__':
                     continue
             iter_start_time = time.time()  # timer for computation per iteration
 
-            model.set_input(data)         # unpack data from dataset and apply preprocessing
+            model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
 
             model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
 
@@ -140,10 +150,13 @@ if __name__ == '__main__':
                 fw = open(sacre_filename, "w", encoding='utf8')
                 fw.close()
 
-                for j, eval_data in enumerate(eval_dataset.dataloader):  # inner loop within one epoch
-                    if j > 20:
-                        break
-                    model.set_input(eval_data)  # unpack data from dataset and apply preprocessing
+                eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
+                eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
+
+                for j in range(20):  # inner loop within one epoch
+                    eval_data_A = eval_dataset_A_iter.__next__()
+                    eval_data_B = eval_dataset_B_iter.__next__()
+                    model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
                     model.evaluate(sentences_file=sentences_filename, sacre_file=sacre_filename)
 
 
@@ -176,9 +189,13 @@ if __name__ == '__main__':
         with open(sacre_filename, "a", encoding='utf8') as sacre_file:
             sacre_file.write("NEW EPOCH:\n")
 
-        for j, eval_data in enumerate(eval_dataset.dataloader):  # inner loop within one epoch
-            model.set_input(eval_data)  # unpack data from dataset and apply preprocessing
-            model.evaluate(sentences_file=sentences_filename, distance_file=distance_filename, mutual_avg_file=mutual_filename,  mutual_avg_file_A=mutual_filename_A, mutual_avg_file_B=mutual_filename_B, top_k_file=top_k_filename,sacre_file=sacre_filename)
+        eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
+        eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
+        for j in range(n):  # inner loop within one epoch
+            eval_data_A = eval_dataset_A_iter.__next__()
+            eval_data_B = eval_dataset_B_iter.__next__()
+            model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
+            model.evaluate(sentences_file=sentences_filename,sacre_file=sacre_filename)
 
         with open(sacre_filename, "a", encoding='utf8') as sacre_file:
             sacre_file.write("\n\n\n\n")

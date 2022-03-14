@@ -52,7 +52,7 @@ class MonolingualDataset(BaseDataset):
 
             count = 0
             for line in fIn:
-                sentences.append(line.split("/t")[1])
+                sentences.append(line.split("\t")[1])
                 count += 1
                 
         self.data = sentences

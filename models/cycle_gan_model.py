@@ -80,14 +80,7 @@ class CycleGANModel(BaseModel):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         self.loss_names = ['D_AB', 'G_AB', 'cycle_ABA', 'D_BA', 'G_BA', 'cycle_BAB']
-        # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
-        visual_names_A = ['real_A', 'fake_B', 'rec_A']
-        visual_names_B = ['real_B', 'fake_A', 'rec_B']
-        #if self.isTrain and self.opt.lambda_identity > 0.0:  # if identity loss is used, we also visualize idt_B=G_A(B) ad idt_A=G_A(B)
-        #    visual_names_A.append('idt_B')
-        #    visual_names_B.append('idt_A')
 
-        # self.visual_names = visual_names_A + visual_names_B  # combine visualizations for A and B
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
         if self.isTrain:
             self.model_names = ['G_AB', 'G_BA', 'D_AB', 'D_BA']
@@ -142,7 +135,7 @@ class CycleGANModel(BaseModel):
         self.loss_G = 0
 
 
-    def set_input(self, input):
+    def set_input(self, input_A, input_B):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
 
         Parameters:
@@ -151,11 +144,8 @@ class CycleGANModel(BaseModel):
         The option 'direction' can be used to swap domain A and domain B.
         """
         # torch.cuda.empty_cache()
-        if self.opt.dataset_mode == "ParallelSentences":
-            self.real_A = input['A']
-            self.real_B = input['B']
-        else:
-            raise NotImplementedError("Dataset not implemented")
+        self.real_A = input_A
+        self.real_B = input_B
 
 
     def forward(self):

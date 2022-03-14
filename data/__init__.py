@@ -59,40 +59,20 @@ def create_dataset(opt, model):
     """
     assert opt.train_percentage+opt.eval_percentage+opt.test_percentage == 1.0
 
-    cachedfiles = ["data_"]  # , "STS2017.en-de.txt.gz", "xnli-en-de.txt.gz"]
-    cached_filepath_train = os.path.join(opt.dataroot, opt.name, cachedfiles[0] + 'train.bkp')
-    cached_filepath_eval = os.path.join(opt.dataroot, opt.name, cachedfiles[0] + 'eval.bkp')
-    #cached_filepath_test = os.path.join(opt.dataroot, cachedfiles[0] + 'test.bkp')
+    train_data_loader_A = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_en.txt")
+    train_data_loader_B = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_vi.txt")
+    os.mkdir(os.path.join(opt.dataroot, opt.name))
 
-    if os.path.exists(cached_filepath_train):
-        train_data_loader = torch.load(cached_filepath_train)
-    else:
-        train_data_loader = CustomDatasetDataLoader(opt, dataloader=None, dataset_type='train')
-        os.mkdir(os.path.join(opt.dataroot, opt.name))
-        torch.save(train_data_loader, cached_filepath_train)
+    eval_data_loader_A = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_en.txt")
+    eval_data_loader_B = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_vi.txt")
 
-
-    if os.path.exists(cached_filepath_eval):
-        eval_data_loader = torch.load(cached_filepath_eval)
-    else:
-        eval_data_loader = CustomDatasetDataLoader(opt, dataloader=None, dataset_type='eval')
-        torch.save(eval_data_loader, cached_filepath_eval)
-
-    '''
-    if os.path.exists(cached_filepath_test):
-        test_data_loader = torch.load(cached_filepath_test)
-    else:
-        test_data_loader = CustomDatasetDataLoader(opt, dataloader=None, dataset_type='test')
-        torch.save(test_data_loader, cached_filepath_test)
-    '''
-
-    return train_data_loader, eval_data_loader#, test_data_loader
+    return train_data_loader_A, train_data_loader_B, eval_data_loader_A, eval_data_loader_B
 
 
 class CustomDatasetDataLoader():
     """Wrapper class of Dataset class that performs multi-threaded data loading"""
 
-    def __init__(self, opt, dataloader=None, dataset_type='train'):
+    def __init__(self, opt, path):
         """Initialize this class
 
         Step 1: create a dataset instance given the name [dataset_mode]
@@ -104,21 +84,17 @@ class CustomDatasetDataLoader():
         self.test_perc = opt.test_percentage
 
         #dataset_class = find_dataset_using_name(opt.dataset_mode)
-        self.dataset = MonolingualDataset(opt, "./content/ALT-Parallel-Corpus-20191206/data_en.txt")
+        self.dataset = MonolingualDataset(opt, path)
         #self.dataset = dataset_class(opt, self.train_perc, self.eval_perc, self.test_perc)
         self.dataset.load_data()
 
-        if dataloader is None:
-            n_threads = int(opt.num_threads)
-            shuffle = not opt.serial_batches
-            self.dataloader = torch.utils.data.DataLoader(
-                self.dataset,
-                batch_size=opt.batch_size,
-                shuffle=shuffle,
-                num_workers=n_threads)
-
-        else:
-            self.dataloader = dataloader
+        n_threads = int(opt.num_threads)
+        shuffle = not opt.serial_batches
+        self.dataloader = torch.utils.data.DataLoader(
+            self.dataset,
+            batch_size=opt.batch_size,
+            shuffle=shuffle,
+            num_workers=n_threads)
 
     def load_data(self):
         return self
