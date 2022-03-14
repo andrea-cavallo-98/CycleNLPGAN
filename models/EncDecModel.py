@@ -43,45 +43,28 @@ class EncDecModel(nn.Module):
 
     def forward(self, sentences, target_sentences=None, partial_value=False, generate_sentences=True):
 
-        encoder_only = False
-        if target_sentences is None:
-            encoder_only = True
-
         embeddings = self.tokenizer(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         embeddings = embeddings.to(self.model.device)
         pooling_attention_mask = embeddings.attention_mask
-        if self.task == "translation":
-            if not encoder_only:
-                labels = self.tokenizer(target_sentences, padding='max_length', max_length=self.max_seq_length,
-                                        truncation=True, return_tensors='pt').to(self.model.device)  # Batch size 1
-
-                outputs = self.model(**embeddings, labels=labels.input_ids, return_dict=True)
-            else:
-                outputs = self.model.base_model.encoder(**embeddings, output_attentions=True, return_dict=True)
-            if generate_sentences:
-                output_sentences = self.model.generate(**embeddings)
-                output_sentences = self.decode(output_sentences)
-            else:
-                output_sentences = []
-        else:
-            output_sentences = self.generate(sentences)
+        
+        outputs = self.model(**embeddings, labels=None, return_dict=True)
+        
+        if generate_sentences:
+            output_sentences = self.model.generate(**embeddings)
             output_sentences = self.decode(output_sentences)
-
+        else:
+            output_sentences = []
+       
 
         if partial_value:
 
             sentence_embedding = torch.zeros([len(sentences), self.get_word_embedding_dimension()], dtype=torch.float32).to(self.model.device)
             for i in range(len(sentences)):
-                if not encoder_only:
-                    params = dict()
-                    params["token_embeddings"] = outputs.encoder_last_hidden_state[i]
-                    params["attention_mask"] = pooling_attention_mask[i]
-                    sentence_embedding[i] = self.embedding_pooling(params)["sentence_embedding"]
-                else:
-                    params = dict()
-                    params["token_embeddings"] = outputs.last_hidden_state[i]
-                    params["attention_mask"] = pooling_attention_mask[i]
-                    sentence_embedding[i] = self.embedding_pooling(params)["sentence_embedding"]
+                params = dict()
+                params["token_embeddings"] = outputs.encoder_last_hidden_state[i]
+                params["attention_mask"] = pooling_attention_mask[i]
+                sentence_embedding[i] = self.embedding_pooling(params)["sentence_embedding"]
+
             if target_sentences is not None:
                 return output_sentences, sentence_embedding, outputs.loss
             else:
@@ -120,7 +103,7 @@ class EncDecModel(nn.Module):
 
 
     def generate(self, text):
-        encod = self.tokenizer.prepare_translation_batch(text).to(self.model.device)
+        encod = self.tokenizer(text, return_tensors="pt", padding=True).to(self.model.device)
         output = self.model.generate(**encod)
         return output
 
