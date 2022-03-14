@@ -66,8 +66,8 @@ if __name__ == '__main__':
 
         for j in range(20):  # inner loop within one epoch
 
-            eval_data_A = eval_dataset_A_iter.__next__()
-            eval_data_B = eval_dataset_B_iter.__next__()
+            _, eval_data_A = eval_dataset_A_iter.__next__()
+            _, eval_data_B = eval_dataset_B_iter.__next__()
             model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
             model.evaluate(sentences_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sentence.txt"), 
                             sacre_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"))
@@ -107,8 +107,8 @@ if __name__ == '__main__':
         for i in range(n):  # inner loop within one epoch
             epoch_iter += opt.batch_size
 
-            data_A = train_dataset_A_iter.__next__()
-            data_B = train_dataset_B_iter.__next__()
+            _, data_A = train_dataset_A_iter.__next__()
+            _, data_B = train_dataset_B_iter.__next__()
 
             if epoch == opt.epoch_count:
                 if n > 0:
@@ -154,8 +154,8 @@ if __name__ == '__main__':
                 eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
 
                 for j in range(20):  # inner loop within one epoch
-                    eval_data_A = eval_dataset_A_iter.__next__()
-                    eval_data_B = eval_dataset_B_iter.__next__()
+                    _, eval_data_A = eval_dataset_A_iter.__next__()
+                    _, eval_data_B = eval_dataset_B_iter.__next__()
                     model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
                     model.evaluate(sentences_file=sentences_filename, sacre_file=sacre_filename)
 
@@ -192,8 +192,8 @@ if __name__ == '__main__':
         eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
         eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
         for j in range(n):  # inner loop within one epoch
-            eval_data_A = eval_dataset_A_iter.__next__()
-            eval_data_B = eval_dataset_B_iter.__next__()
+            _, eval_data_A = eval_dataset_A_iter.__next__()
+            _, eval_data_B = eval_dataset_B_iter.__next__()
             model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
             model.evaluate(sentences_file=sentences_filename,sacre_file=sacre_filename)
 
