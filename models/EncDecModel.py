@@ -98,7 +98,8 @@ class EncDecModel(nn.Module):
 
     def save(self, output_path: str):
         self.model.save_pretrained(output_path)
-        self.tokenizer.save_pretrained(output_path)
+        self.tokenizer_en.save_pretrained(output_path)
+        self.tokenizer_target.save_pretrained(output_path)
 
         #with open(os.path.join(output_path, 'sentence_bert_config.json'), 'w') as fOut:
         #    json.dump(self.get_config_dict(), fOut, indent=2)
@@ -127,7 +128,7 @@ class EncDecModel(nn.Module):
 
 
     def decode(self, tokens): 
-        list_sentences = self.tokenizer.batch_decode(tokens, skip_special_tokens=True)
+        list_sentences = self.tokenizer_target.batch_decode(tokens, skip_special_tokens=True)
         list_sentences = [''.join(l).replace('▁', ' ') for l in list_sentences]
         return list_sentences
         #return self.dest_tokenizer.batch_decode(tokens, skip_special_tokens=True)
@@ -245,7 +246,7 @@ class EncDecModel(nn.Module):
 
 
     def batch_encode_plus(self, sentences, padding='max_length', verbose=True):
-        train_input_ids = self.tokenizer.batch_encode_plus(
+        train_input_ids = self.tokenizer_en.batch_encode_plus(
                     sentences,
                     return_tensors='pt',
                     max_length=self.max_seq_length,

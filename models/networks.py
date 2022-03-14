@@ -123,27 +123,10 @@ def define_Gs(task, net_type, source='de', dest='en', gpu_ids=[], freeze_GB_enco
 
     if freeze_GB_encoder is True:
         netB.model.base_model.encoder.eval()
-    if task == "translation":
-        pass
-    elif task == "reconstruction":
-
-        tmp = deepcopy(netA.model.base_model.encoder)
-        netA.model.base_model.encoder = deepcopy(netB.model.base_model.encoder)
-        netB.model.base_model.encoder = deepcopy(tmp)
-        netA.dest_tokenizer = deepcopy(netA.tokenizer)
-        netB.dest_tokenizer = deepcopy(netB.tokenizer)
-        tmp = deepcopy(netA.tokenizer)
-        netA.tokenizer = deepcopy(netB.tokenizer)
-        netB.tokenizer = deepcopy(tmp)
-    else:
-        raise NotImplementedError('Task [%s] is not implemented', task)
 
     netA.task = task
     netB.task = task
-    if task == 'reconstruction':
-        netA.add_pooling_layer()
-        netB.add_pooling_layer()
-
+    
     netA = init_net(netA, gpu_ids)
     netB = init_net(netB, gpu_ids)
 
