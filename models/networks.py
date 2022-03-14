@@ -185,7 +185,7 @@ def define_G(model, source='en', dest='de', gpu_ids=[], use_init_net= True, free
         net = EncDecT5Model(model_name, freeze_encoder=freeze_encoder, source_language=src_lang, target_language=tgt_lang)
     elif model == 'marianMT':
         model_name = 'Helsinki-NLP/opus-mt-'+source+'-'+dest
-        net = EncDecModel(model_name, freeze_encoder=freeze_encoder)
+        net = EncDecModel(model_name, freeze_encoder=freeze_encoder, source_lang=source, target_lang=dest)
     else:
         net = EncoderDecoderModel.from_encoder_decoder_pretrained('bert-base-cased', 'bert-base-german-cased')    #net=SentenceTransformer(netG)
 

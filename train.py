@@ -44,6 +44,7 @@ if __name__ == '__main__':
     dataset_size = len(train_dataset_A)    # get the number of images in the dataset.
     logging.info('The number of training sentences = %d' % dataset_size)
     logging.info('The number of evaluation sentences = %d' % len(eval_dataset_A))
+    logging.info('The number of evaluation sentences = %d' % len(eval_dataset_B))
    # logging.info('The number of test sentences = %d' % len(test_dataset))
     logging.info('The number of training batches = %d' % len(train_dataset_A.dataloader))
     logging.info('The number of evaluation batches = %d' % len(eval_dataset_A.dataloader))
@@ -52,10 +53,14 @@ if __name__ == '__main__':
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = opt.iter_count                # the total number of training iterations
 
+    n = len(train_dataset_A.dataloader)
 
+    """
     n = round(opt.iter_count/opt.batch_size) #NBatch totali
     n -= (opt.epoch_count-1)*(round(len(train_dataset_A)/opt.batch_size))
+    n -= 1
     previous_suffix = None
+    """
 
 
 
@@ -110,10 +115,10 @@ if __name__ == '__main__':
             _, data_A = train_dataset_A_iter.__next__()
             _, data_B = train_dataset_B_iter.__next__()
 
-            if epoch == opt.epoch_count:
-                if n > 0:
-                    n -= 1
-                    continue
+            #if epoch == opt.epoch_count:
+            #    if n > 0:
+            #        n -= 1
+            #        continue
             iter_start_time = time.time()  # timer for computation per iteration
 
             model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing

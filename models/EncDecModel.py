@@ -1,7 +1,8 @@
 import torch
 from torch import nn, Tensor
 from tqdm import tqdm, trange
-from transformers import AutoModel, AutoTokenizer, AutoConfig, MarianTokenizer, MarianMTModel
+from transformers import AutoModel, AutoTokenizer, AutoConfig, MarianTokenizer, MarianMTModel, AutoModelForSeq2SeqLM, MBart50TokenizerFast
+import transformers
 import json
 from typing import List, Dict, Optional, Tuple, Union
 import os
@@ -16,15 +17,20 @@ class EncDecModel(nn.Module):
     """Huggingface AutoModel to generate token embeddings.
     Loads the correct class, e.g. BERT / RoBERTa etc.
     """
-    def __init__(self, model_name_or_path: str, max_seq_length: int = 128, task="translation", model_args: Dict = {}, cache_dir: Optional[str] = None, freeze_encoder=False):
+    def __init__(self, model_name_or_path: str, max_seq_length: int = 128, task="translation", 
+                model_args: Dict = {}, cache_dir: Optional[str] = None, freeze_encoder=False, 
+                source_lang = "en", target_lang = "vi"):
         super(EncDecModel, self).__init__()
         self.config_keys = ['max_seq_length']
         self.max_seq_length = max_seq_length
+        self.source_lang = source_lang
+        self.target_lang = target_lang
 
         config = AutoConfig.from_pretrained(model_name_or_path, **model_args, cache_dir=cache_dir)
-        self.model = MarianMTModel.from_pretrained(model_name_or_path, config=config, cache_dir=cache_dir)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, config=config, cache_dir=cache_dir)
 
-        self.tokenizer = MarianTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+        self.tokenizer_en = MarianTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+        self.tokenizer_target = MarianTokenizer.from_pretrained("CLAck/en-vi", cache_dir=cache_dir)
 
         self.config = self.model.config
         self.config_class = self.model.config_class
@@ -43,11 +49,15 @@ class EncDecModel(nn.Module):
 
     def forward(self, sentences, target_sentences=None, partial_value=False, generate_sentences=True):
 
-        embeddings = self.tokenizer(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+        if self.source_lang == "en":
+            embeddings = self.tokenizer_en(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+        else:
+            embeddings = self.tokenizer_target(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+        
         embeddings = embeddings.to(self.model.device)
         pooling_attention_mask = embeddings.attention_mask
         
-        outputs = self.model(**embeddings, labels=None, return_dict=True)
+        outputs = self.model(**embeddings, return_dict=True, labels = embeddings.input_ids)
         
         if generate_sentences:
             output_sentences = self.model.generate(**embeddings)
@@ -103,7 +113,11 @@ class EncDecModel(nn.Module):
 
 
     def generate(self, text):
-        encod = self.tokenizer(text, return_tensors="pt", padding=True).to(self.model.device)
+        if self.source_lang == "en":
+            encod = self.tokenizer_en(text, return_tensors="pt", padding=True).to(self.model.device)
+        else:
+            encod = self.tokenizer_target(text, return_tensors="pt", padding=True).to(self.model.device)
+        
         output = self.model.generate(**encod)
         return output
 
