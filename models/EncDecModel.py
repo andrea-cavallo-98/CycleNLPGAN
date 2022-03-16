@@ -51,7 +51,7 @@ class EncDecModel(nn.Module):
 
         self.add_pooling_layer()
 
-    def extend_tokenizer(model_name_or_path):
+    def extend_tokenizer(self, model_name_or_path):
         # Read dataset 
         df_en = pd.read_csv("/content/ALT-Parallel-Corpus-20191206/data_en.txt", sep='\t', header=None, names=["id", "en"])
         df_target = pd.read_csv("/content/ALT-Parallel-Corpus-20191206/data_vi.txt", sep='\t', header=None, names=["id", "vi"])
