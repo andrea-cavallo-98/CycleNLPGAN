@@ -95,8 +95,10 @@ class CycleGANModel(BaseModel):
 
         if self.isTrain:  # define discriminators
 
-            netDAB_name = networks.define_name(opt.netD, 'en')
-            netDBA_name = networks.define_name(opt.netD, opt.language)
+            #netDAB_name = networks.define_name(opt.netD, 'en')
+            #netDBA_name = networks.define_name(opt.netD, opt.language)
+            netDAB_name = "distilbert-base-multilingual-cased"
+            netDBA_name = "distilbert-base-multilingual-cased"
 
             self.netD_AB = networks.define_D(opt.netD, netDAB_name, self.gpu_ids)
             self.netD_BA = networks.define_D(opt.netD, netDBA_name, self.gpu_ids)

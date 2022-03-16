@@ -63,7 +63,7 @@ if __name__ == '__main__':
     """
 
 
-
+    """
     if not opt.continue_train:
 
         eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
@@ -96,7 +96,9 @@ if __name__ == '__main__':
         fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_sacre.tsv"), "a", encoding='utf8')
         fw.write("0\t0\t" + str(avg_fake_A) + "\t" + str(avg_rec_A) + "\t" + str(avg_fake_B) + "\t" + str(avg_rec_B) + "\n")
         fw.close()
+    """
 
+    print("\n\n ####### START TRAINING ######### \n\n")
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
