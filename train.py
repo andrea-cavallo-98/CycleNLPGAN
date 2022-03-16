@@ -109,7 +109,8 @@ if __name__ == '__main__':
         train_dataset_A_iter = enumerate(train_dataset_A.dataloader)
         train_dataset_B_iter = enumerate(train_dataset_B.dataloader)
 
-        for i in range(n):  # inner loop within one epoch
+        print("****** Epoch ", epoch, " *******")
+        for i in tqdm(range(n)):  # inner loop within one epoch
             epoch_iter += opt.batch_size
 
             _, data_A = train_dataset_A_iter.__next__()

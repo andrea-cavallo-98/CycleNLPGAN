@@ -10,6 +10,7 @@ import numpy as np
 import logging
 from models.Pooling import Pooling
 from transformers.tokenization_utils import BatchEncoding
+import pandas as pd
 
 
 
@@ -30,7 +31,10 @@ class EncDecModel(nn.Module):
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, config=config, cache_dir=cache_dir)
 
         self.tokenizer_en = MarianTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir)
-        self.tokenizer_target = MarianTokenizer.from_pretrained("CLAck/en-vi", cache_dir=cache_dir)
+        #self.tokenizer_target = MarianTokenizer.from_pretrained("CLAck/en-vi", cache_dir=cache_dir)
+        self.tokenizer_target = self.extend_tokenizer(model_name_or_path)
+
+        self.model.resize_token_embeddings(len(self.tokenizer_target))
 
         self.config = self.model.config
         self.config_class = self.model.config_class
@@ -46,6 +50,37 @@ class EncDecModel(nn.Module):
         self.freeze_encoder = freeze_encoder
 
         self.add_pooling_layer()
+
+    def extend_tokenizer(model_name_or_path):
+        # Read dataset 
+        df_en = pd.read_csv("/content/ALT-Parallel-Corpus-20191206/data_en.txt", sep='\t', header=None, names=["id", "en"])
+        df_target = pd.read_csv("/content/ALT-Parallel-Corpus-20191206/data_vi.txt", sep='\t', header=None, names=["id", "vi"])
+        df_en = df_en.set_index("id")
+        df_target = df_target.set_index("id")
+        df_en_target = df_en.join(df_target)
+        df_en_target.dropna(inplace=True)
+        df_en_target.head()
+
+        # Tokenize vietnamese with mBart
+        mbart_tokenizer = MBart50TokenizerFast.from_pretrained("facebook/mbart-large-50", src_lang="en_XX", tgt_lang="vi_VN")
+        marian_tokenizer = MarianTokenizer.from_pretrained(model_name_or_path)
+
+        transformers.logging.set_verbosity(transformers.logging.CRITICAL)
+        # Add tokens to marian tokenizer
+        tokensZoo = []
+
+        for sentence in tqdm(list(df_en_target["vi"])):
+            tokenized_sentence = mbart_tokenizer(sentence)
+            for t in mbart_tokenizer.convert_ids_to_tokens(tokenized_sentence["input_ids"]):
+                if t.lstrip("▁") not in tokensZoo and t.lstrip("▁") != "":
+                    tokensZoo.append(t.lstrip("▁"))
+
+        print(f"{len(tokensZoo)} tokens to be added.")
+        print(f"initial vocab size: {len(marian_tokenizer)}")
+        marian_tokenizer.add_tokens(tokensZoo, special_tokens=True)
+        print(f"final vocab size: {len(marian_tokenizer)}")
+        return marian_tokenizer
+
 
     def forward(self, sentences, target_sentences=None, partial_value=False, generate_sentences=True):
 
@@ -100,10 +135,6 @@ class EncDecModel(nn.Module):
         self.model.save_pretrained(output_path)
         self.tokenizer_en.save_pretrained(output_path)
         self.tokenizer_target.save_pretrained(output_path)
-
-        #with open(os.path.join(output_path, 'sentence_bert_config.json'), 'w') as fOut:
-        #    json.dump(self.get_config_dict(), fOut, indent=2)
-
 
     @staticmethod
     def load(input_path: str, task, freeze_encoder):
