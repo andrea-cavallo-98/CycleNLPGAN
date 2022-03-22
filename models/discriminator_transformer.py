@@ -24,11 +24,14 @@ class DiscriminatorTransformer(torch.nn.Module):
         self.config_class = self.model.config_class
         self.max_seq_length = max_seq_length
 
-    def forward(self, features, label, attach_grad_fn=None):
+    def forward(self, features, label):
         """Returns token_embeddings, cls_token"""
         embedding = self.tokenizer(features, return_tensors='pt', truncation=True,
-                max_length=self.max_seq_length, padding='max_length',).to(self.model.device)
-        labels = self.get_target_tensor(torch.zeros(embedding["input_ids"].size()[0]), label)
+                max_length=self.max_seq_length, padding='max_length').to(self.model.device)
+
+        #labels = self.get_target_tensor(torch.zeros(embedding["input_ids"].size()[0]), label)
+        labels = torch.tensor(label).to(self.model.device)
+
         features = self.model(**embedding, labels=labels)
         return features
 

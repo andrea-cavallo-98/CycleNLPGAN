@@ -87,18 +87,21 @@ class EncDecModel(nn.Module):
         if self.source_lang == "en":
             embeddings = self.tokenizer_en(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
             if target_sentences is not None:
-                labels = self.tokenizer_target(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+                with self.tokenizer_target.as_target_tokenizer():
+                  labels = self.tokenizer_target(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         else:
             embeddings = self.tokenizer_target(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
             if target_sentences is not None:
-                labels = self.tokenizer_en(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+                with self.tokenizer_en.as_target_tokenizer():
+                  labels = self.tokenizer_en(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         
 
         embeddings = embeddings.to(self.model.device)
         #pooling_attention_mask = embeddings.attention_mask
         
         if target_sentences is not None:
-            outputs = self.model(**embeddings, return_dict=True, labels = labels)
+            labels = labels.to(self.model.device)
+            outputs = self.model(**embeddings, labels = labels.input_ids)
         
         output_sentences = self.model.generate(**embeddings)
         output_sentences = self.decode(output_sentences)
