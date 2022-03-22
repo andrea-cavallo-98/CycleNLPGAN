@@ -153,11 +153,12 @@ class CycleGANModel(BaseModel):
     def forward(self):
 
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B, self.fake_B_embeddings, self.loss_G_AB_1 = self.netG_AB(self.real_A, None, True)  # G_A(A)
-        self.rec_A, self.rec_A_embeddings, self.loss_G_BA_1 = self.netG_BA(self.fake_B, None, True)  # G_B(G_A(A))
+        self.fake_B, self.fake_B_embeddings, _ = self.netG_AB(self.real_A, None, True)  # G_A(A)
+        ### Add self.real_A as labels for second pass
+        self.rec_A, self.rec_A_embeddings, self.loss_cycle_ABA = self.netG_BA(self.fake_B, self.real_A, True)  # G_B(G_A(A))
 
-        self.fake_A, self.fake_A_embeddings, self.loss_G_BA_2 = self.netG_BA(self.real_B, None, True)  # G_B(B)
-        self.rec_B, self.rec_B_embeddings, self.loss_G_AB_2 = self.netG_AB(self.fake_A, None, True)  # G_A(G_B(B))
+        self.fake_A, self.fake_A_embeddings, _ = self.netG_BA(self.real_B, None, True)  # G_B(B)
+        self.rec_B, self.rec_B_embeddings, self.loss_cycle_BAB = self.netG_AB(self.fake_A, self.real_B, True)  # G_A(G_B(B))
 
 
     def backward_D_basic(self, netD, real_sent, fake_sent):
@@ -206,17 +207,19 @@ class CycleGANModel(BaseModel):
         lambda_C_2 = self.opt.lambda_C_2
         lambda_C_3 = self.opt.lambda_C_3
 
+        # Loss G_AB is the one of the discriminator
         self.loss_G_AB = self.netD_AB(self.fake_B, 1).loss
 
         #self.loss_G_AB = self.loss_G_AB * lambda_G
-        self.loss_G_AB = (self.loss_G_AB + ((self.loss_G_AB_1 + self.loss_G_AB_2) * 0.5)) * 0.5 * lambda_G
+        self.loss_G_AB = self.loss_G_AB * 0.5 * lambda_G
 
         self.loss_G_BA = self.netD_BA(self.fake_A, 1).loss
 
         #self.loss_G_BA = self.loss_G_BA * lambda_G
-        self.loss_G_BA = (self.loss_G_BA + ((self.loss_G_BA_1 + self.loss_G_BA_2) * 0.5)) * 0.5 * lambda_G
+        self.loss_G_BA = self.loss_G_BA * 0.5 * lambda_G
 
         # Forward cycle loss || G_B(G_A(A)) - A||
+        """
         size_vector = torch.ones(
             self.netG_AB.module.get_sentence_embedding_dimension()).to(self.device)
 
@@ -226,22 +229,24 @@ class CycleGANModel(BaseModel):
                                                 size_vector) * lambda_A
         else:
             self.loss_cycle_ABA = torch.tensor([0.0]).to(self.device)
+        """
 
         # Backward cycle loss || G_A(G_B(B)) - B||
-
+        """
         if lambda_B > 0.0:
             self.loss_cycle_BAB = self.criterionCycle(self.fake_A_embeddings,
                     self.netG_BA.module.forward(self.rec_B, target_sentences=None, partial_value=True, generate_sentences=False)[1],
                     size_vector) * lambda_B
         else:
             self.loss_cycle_BAB = torch.tensor([0.0]).to(self.device)
+        """
 
 
         # 'weight for embedding loss (fakeA -> recB, fakeB -> recA)')  # mixed loss
         # 'weight for embedding loss (recA -> recB)')  # mixed loss (dubbio translation)
 
         # combined loss and calculate gradients
-        self.loss_G = self.loss_G_AB + self.loss_G_BA + self.loss_cycle_ABA + self.loss_cycle_BAB  # + self.loss_idt_A.item() + self.loss_idt_B.item()
+        self.loss_G = self.loss_G_AB + self.loss_G_BA + self.loss_cycle_ABA * lambda_A + self.loss_cycle_BAB * lambda_B  
 
         self.loss_G.backward()
 
