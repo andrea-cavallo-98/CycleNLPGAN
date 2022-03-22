@@ -86,10 +86,12 @@ class EncDecModel(nn.Module):
 
         if self.source_lang == "en":
             embeddings = self.tokenizer_en(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
-            labels = self.tokenizer_target(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+            if target_sentences is not None:
+                labels = self.tokenizer_target(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         else:
             embeddings = self.tokenizer_target(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
-            labels = self.tokenizer_en(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+            if target_sentences is not None:
+                labels = self.tokenizer_en(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         
 
         embeddings = embeddings.to(self.model.device)
