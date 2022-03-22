@@ -153,12 +153,12 @@ class CycleGANModel(BaseModel):
     def forward(self):
 
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B, self.fake_B_embeddings, _ = self.netG_AB(self.real_A, None, True)  # G_A(A)
+        self.fake_B = self.netG_AB(self.real_A, None)  # G_A(A)
         ### Add self.real_A as labels for second pass
-        self.rec_A, self.rec_A_embeddings, self.loss_cycle_ABA = self.netG_BA(self.fake_B, self.real_A, True)  # G_B(G_A(A))
+        self.rec_A, self.loss_cycle_ABA = self.netG_BA(self.fake_B, self.real_A)  # G_B(G_A(A))
 
-        self.fake_A, self.fake_A_embeddings, _ = self.netG_BA(self.real_B, None, True)  # G_B(B)
-        self.rec_B, self.rec_B_embeddings, self.loss_cycle_BAB = self.netG_AB(self.fake_A, self.real_B, True)  # G_A(G_B(B))
+        self.fake_A = self.netG_BA(self.real_B, None)  # G_B(B)
+        self.rec_B, self.loss_cycle_BAB = self.netG_AB(self.fake_A, self.real_B)  # G_A(G_B(B))
 
 
     def backward_D_basic(self, netD, real_sent, fake_sent):
@@ -250,7 +250,7 @@ class CycleGANModel(BaseModel):
 
         self.loss_G.backward()
 
-        del size_vector
+        #del size_vector
 
         torch.cuda.empty_cache()
         gc.collect()
@@ -276,10 +276,10 @@ class CycleGANModel(BaseModel):
         self.backward_G()  # calculate gradients for G_A and G_B
         self.optimizer_G.step()  # update G_A and G_B's weights
 
-        del self.loss_G_AB_1
-        del self.loss_G_AB_2
-        del self.loss_G_BA_1
-        del self.loss_G_BA_2
+        #del self.loss_G_AB_1
+        #del self.loss_G_AB_2
+        #del self.loss_G_BA_1
+        #del self.loss_G_BA_2
         del self.loss_G
         gc.collect()
 
@@ -293,10 +293,10 @@ class CycleGANModel(BaseModel):
         self.backward_D_BA()  # calculate graidents for D_B
         self.optimizer_D.step()  # update D_A and D_B's weights
 
-        del self.fake_A_embeddings
-        del self.fake_B_embeddings
-        del self.rec_A_embeddings
-        del self.rec_B_embeddings
+        #del self.fake_A_embeddings
+        #del self.fake_B_embeddings
+        #del self.rec_A_embeddings
+        #del self.rec_B_embeddings
         del self.fake_A
         del self.fake_B
         del self.rec_A

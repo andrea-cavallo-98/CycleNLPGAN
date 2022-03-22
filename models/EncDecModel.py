@@ -49,7 +49,7 @@ class EncDecModel(nn.Module):
 
         self.freeze_encoder = freeze_encoder
 
-        self.add_pooling_layer()
+        #self.add_pooling_layer()
 
     def extend_tokenizer(self, model_name_or_path):
         # Read dataset 
@@ -82,25 +82,28 @@ class EncDecModel(nn.Module):
         return marian_tokenizer
 
 
-    def forward(self, sentences, target_sentences=None, partial_value=False, generate_sentences=True):
+    def forward(self, sentences, target_sentences=None):
 
         if self.source_lang == "en":
             embeddings = self.tokenizer_en(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+            labels = self.tokenizer_target(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         else:
             embeddings = self.tokenizer_target(sentences, padding='max_length', max_length=self.max_seq_length, truncation=True, return_tensors='pt')
+            labels = self.tokenizer_en(target_sentences, padding="max_length", max_length=self.max_seq_length, truncation=True, return_tensors='pt')
         
+
         embeddings = embeddings.to(self.model.device)
-        pooling_attention_mask = embeddings.attention_mask
+        #pooling_attention_mask = embeddings.attention_mask
         
-        outputs = self.model(**embeddings, return_dict=True, labels = embeddings.input_ids)
+        if target_sentences is not None:
+            outputs = self.model(**embeddings, return_dict=True, labels = labels)
         
-        if generate_sentences:
-            output_sentences = self.model.generate(**embeddings)
-            output_sentences = self.decode(output_sentences)
-        else:
-            output_sentences = []
+        output_sentences = self.model.generate(**embeddings)
+        output_sentences = self.decode(output_sentences)
+
        
 
+        """
         if partial_value:
 
             sentence_embedding = torch.zeros([len(sentences), self.get_word_embedding_dimension()], dtype=torch.float32).to(self.model.device)
@@ -114,13 +117,14 @@ class EncDecModel(nn.Module):
                 return output_sentences, sentence_embedding, outputs.loss
             else:
                 return output_sentences, sentence_embedding, 0.0
-        else:
             del embeddings
 
-            if target_sentences is not None:
-                return output_sentences, outputs.loss
-            else:
-                return output_sentences
+        """
+
+        if target_sentences is not None:
+            return output_sentences, outputs.loss
+        else:
+            return output_sentences
 
     def get_word_embedding_dimension(self) -> int:
         return self.config.hidden_size
