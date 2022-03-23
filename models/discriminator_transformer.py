@@ -29,8 +29,7 @@ class DiscriminatorTransformer(torch.nn.Module):
         embedding = self.tokenizer(features, return_tensors='pt', truncation=True,
                 max_length=self.max_seq_length, padding='max_length').to(self.model.device)
 
-        #labels = self.get_target_tensor(torch.zeros(embedding["input_ids"].size()[0]), label)
-        labels = torch.tensor(label).to(self.model.device)
+        labels = self.get_target_tensor(torch.zeros(embedding["input_ids"].size()[0]), label)
 
         features = self.model(**embedding, labels=labels)
         return features
@@ -69,5 +68,5 @@ class DiscriminatorTransformer(torch.nn.Module):
         """
 
 
-        target_tensor = torch.tensor(label).to(self.model.device)
-        return target_tensor.expand_as(prediction)
+        target_tensor = torch.tensor(label)
+        return target_tensor.expand_as(prediction).to(self.model.device)
