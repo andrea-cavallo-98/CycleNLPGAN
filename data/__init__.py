@@ -59,11 +59,11 @@ def create_dataset(opt, model):
     """
     assert opt.train_percentage+opt.eval_percentage+opt.test_percentage == 1.0
 
-    train_data_loader_A = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_en.txt")
-    train_data_loader_B = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_vi.txt")
+    train_data_loader_A = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_en.txt")
+    train_data_loader_B = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_vi.txt")
 
-    eval_data_loader_A = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_en.txt")
-    eval_data_loader_B = CustomDatasetDataLoader(opt, "/content/ALT-Parallel-Corpus-20191206/data_vi.txt")
+    eval_data_loader_A = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_en.txt")
+    eval_data_loader_B = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_vi.txt")
 
     return train_data_loader_A, train_data_loader_B, eval_data_loader_A, eval_data_loader_B
 

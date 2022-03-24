@@ -29,6 +29,7 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 import torch
+from comet_ml import Experiment
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
@@ -38,6 +39,25 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     model = create_model(opt)  # create a model given opt.model and other options
     model.setup(opt)  # regular setup: load and print networks; create schedulers
+    
+    ''' Setting up Comet if requested '''
+    if opt.comet_key is not None:
+    
+        # Create an experiment with your api key
+        experiment = Experiment(
+            api_key=opt.comet_key,
+            project_name=opt.comet_exp_name,
+            workspace=opt.comet_workspace,
+        )
+        
+        hyper_params = {
+            "learning_rate": opt.lr,
+            "batch_size": opt.batch_size,
+        }
+        experiment.log_parameters(hyper_params)
+    else:
+        experiment = None
+    
 
     #train_dataset, eval_dataset, test_dataset = create_dataset(opt, model)  # create a dataset given opt.dataset_mode and other options
     train_dataset_A, train_dataset_B, eval_dataset_A, eval_dataset_B = create_dataset(opt, model)
@@ -59,9 +79,8 @@ if __name__ == '__main__':
     n = round(opt.iter_count/opt.batch_size) #NBatch totali
     n -= (opt.epoch_count-1)*(round(len(train_dataset_A)/opt.batch_size))
     n -= 1
-    previous_suffix = None
     """
-
+    previous_suffix = None
 
     """
     if not opt.continue_train:
@@ -137,6 +156,9 @@ if __name__ == '__main__':
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
+                if experiment is not None:
+                    for k, v in losses.items():
+                        experiment.log_metric(f"{k}:", v, step=total_iters)
 
 
             if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
@@ -148,7 +170,22 @@ if __name__ == '__main__':
                     model.delete_networks(previous_suffix)
                 previous_suffix = save_suffix
                 model.save_networks('latest')
-
+                
+            if opt.eval_freq is not None and total_iters % opt.eval_freq == 0:
+                sentences_filename = str(epoch)+"_"+str(total_iters)+"_eval_sentences.txt"
+                sentences_filename = os.path.join(opt.checkpoints_dir, opt.name, sentences_filename)
+                
+                eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
+                eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
+                
+                for j in tqdm(range(5)):  # inner loop within one epoch
+                    _, eval_data_A = eval_dataset_A_iter.__next__()
+                    _, eval_data_B = eval_dataset_B_iter.__next__()
+                    model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
+                    model.evaluate_unsupervised(sentences_file=sentences_filename)
+                
+                
+            '''
             if opt.eval_freq is not None and total_iters % opt.eval_freq == 0:
                 sentences_filename = str(epoch)+"_"+str(total_iters)+"_eval_sentences.txt"
                 sacre_filename = str(epoch)+"_"+str(total_iters)+"_sacre.tsv"
@@ -182,9 +219,19 @@ if __name__ == '__main__':
                 logging.info("BLEU distance real-rec A:" + str(avg_rec_A))
                 logging.info("BLEU distance real-fake B:" + str(avg_fake_B))
                 logging.info("BLEU distance real-rec B:" + str(avg_rec_B))
+                
+                if experiment is not None:
+                    experiment.log_metric("BLEU real-fake A:", avg_fake_A, step=0)
+                    experiment.log_metric("BLEU distance real-rec A:", avg_rec_A, step=0)
+                    experiment.log_metric("BLEU distance real-fake B:", avg_fake_B, step=0)
+                    experiment.log_metric("BLEU distance real-rec B:", avg_rec_B, step=0)
+                    
                 fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_sacre.tsv"), "a", encoding='utf8')
                 fw.write(str(epoch)+"\t"+str(total_iters)+"\t" + str(avg_fake_A) + "\t" + str(avg_rec_A) + "\t" + str(avg_fake_B) + "\t" + str(avg_rec_B) + "\n")
                 fw.close()
+            '''
+            
+                
 
             iter_data_time = time.time()
 

@@ -341,6 +341,42 @@ class CycleGANModel(BaseModel):
         self.netD_AB.module.train()
         self.netD_BA.module.train()
         gc.collect()
+        
+        
+    def evaluate_unsupervised(self, sentences_file="eval_sentences.txt"):
+        #logging.info("\n\nEvaluating...")
+
+        self.netG_AB.module.eval()
+        self.netG_BA.module.eval()
+        self.netD_AB.module.eval()
+        self.netD_BA.module.eval()
+        
+        with torch.no_grad():
+            self.forward()  # calculate loss functions, get gradients, update network weights
+        gc.collect()
+        with open(sentences_file, "a") as sentences_file:
+            for j in range(len(self.real_A)):
+                str1 = " A->B->A : " + self.real_A[j] + " -> " + self.fake_B[j] + " -> " + self.rec_A[j]
+                str2 = " B->A->B : " + self.real_B[j] + " -> " + self.fake_A[j] + " -> " + self.rec_B[j]
+                #logging.info(str1)
+                #logging.info(str2)
+                sentences_file.write('%s\n' % str1)  # save the message
+                sentences_file.write('%s\n\n' % str2)  # save the message
+
+        '''
+        bleu_fake_A = sacrebleu.raw_corpus_bleu(self.fake_A, [self.real_A]).score
+        bleu_rec_A = sacrebleu.raw_corpus_bleu(self.rec_A, [self.real_A]).score
+        bleu_fake_B = sacrebleu.raw_corpus_bleu(self.fake_B, [self.real_B]).score
+        bleu_rec_B = sacrebleu.raw_corpus_bleu(self.rec_B, [self.real_B]).score
+
+        with open(sacre_file, "a") as sacre_file:
+                sacre_file.write(str(bleu_fake_A) + '\t' + str(bleu_rec_A) + '\t' +str(bleu_fake_B) + '\t' +str(bleu_rec_B) + '\n')
+        '''
+        self.netG_AB.module.train()
+        self.netG_BA.module.train()
+        self.netD_AB.module.train()
+        self.netD_BA.module.train()
+        gc.collect()
 
 
 

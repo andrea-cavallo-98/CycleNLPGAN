@@ -45,6 +45,9 @@ class BaseOptions():
         parser.add_argument('--load_iter', type=int, default='0', help='which iteration to load? if load_iter > 0, the code will load models by iter_[load_iter]; otherwise, the code will load models by [epoch]')
         parser.add_argument('--verbose', action='store_true', help='if specified, print more debugging information')
         parser.add_argument('--suffix', default='', type=str, help='customized suffix: opt.name = opt.name + suffix: e.g., {model}_{netG}_size{load_size}')
+        parser.add_argument('--comet_key', default=None, type=str, help='Comet API key to log some metrics')
+        parser.add_argument('--comet_exp_name', default=None, type=str, help='Comet experiment name (used only if comet_key is not None')
+        parser.add_argument('--comet_workspace', default=None, type=str, help='Comet workspace name (usually username in Comet, used only if comet_key is not None')
         self.initialized = True
         return parser
 

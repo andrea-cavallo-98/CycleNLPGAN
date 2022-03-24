@@ -53,8 +53,8 @@ class EncDecModel(nn.Module):
 
     def extend_tokenizer(self, model_name_or_path):
         # Read dataset 
-        df_en = pd.read_csv("/content/ALT-Parallel-Corpus-20191206/data_en.txt", sep='\t', header=None, names=["id", "en"])
-        df_target = pd.read_csv("/content/ALT-Parallel-Corpus-20191206/data_vi.txt", sep='\t', header=None, names=["id", "vi"])
+        df_en = pd.read_csv("../ALT-Parallel-Corpus-20191206/data_en.txt", sep='\t', header=None, names=["id", "en"])
+        df_target = pd.read_csv("../ALT-Parallel-Corpus-20191206/data_vi.txt", sep='\t', header=None, names=["id", "vi"])
         df_en = df_en.set_index("id")
         df_target = df_target.set_index("id")
         df_en_target = df_en.join(df_target)
