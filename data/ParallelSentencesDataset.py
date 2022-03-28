@@ -87,9 +87,7 @@ class ParallelDataset(BaseDataset):
         df_en_target.dropna(inplace=True)
                 
         self.data = df_en_target
-
-        random.seed(seed)
-        random.shuffle(self.data)
+        self.data = self.data.sample(frac=1, random_state=seed)
 
 
     def __len__(self):
