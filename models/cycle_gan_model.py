@@ -231,9 +231,9 @@ class CycleGANModel(BaseModel):
 
 
 
-    def optimize_parameters_monolingual(self):
+    def optimize_parameters(self, supervised = False):
         """Calculate losses, gradients, and update network weights; called in every training iteration
-            perform UNSUPERVISED training
+            set supervised parameter to choose between supervised and unsupervised training
         """
 
         self.netG_AB.train()
@@ -242,14 +242,14 @@ class CycleGANModel(BaseModel):
         self.netD_BA.train()
 
         # forward
-        self.forward()  
+        self.forward(supervised)  
         gc.collect()
 
         self.set_requires_grad([self.netD_AB, self.netD_BA], False)
         torch.enable_grad()
 
         self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
-        self.backward_G()  # calculate gradients for G_A and G_B
+        self.backward_G(supervised)  # calculate gradients for G_A and G_B
         self.optimizer_G.step()  # update G_A and G_B's weights
 
         del self.loss_G_AB_sup
@@ -272,52 +272,6 @@ class CycleGANModel(BaseModel):
         del self.fake_B
         del self.rec_A
         del self.rec_B
-        torch.no_grad()
-        torch.cuda.empty_cache()
-        gc.collect()
-
-
-    def optimize_parameters_bilingual(self):
-        """Calculate losses, gradients, and update network weights; called in every training iteration
-            perform SUPERVISED training"""
-
-        self.netG_AB.train()
-        self.netG_BA.train()
-        self.netD_AB.train()
-        self.netD_BA.train()
-
-        # forward
-        self.forward(supervised=True)  
-        gc.collect()
-
-        self.set_requires_grad([self.netD_AB, self.netD_BA], False)
-        torch.enable_grad()
-
-        self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
-        self.backward_G(supervised=True)  # calculate gradients for G_A and G_B
-        self.optimizer_G.step()  # update G_A and G_B's weights
-
-        del self.loss_G_AB_sup
-        del self.loss_G_BA_sup
-        del self.loss_G_AB
-        del self.loss_G_BA
-        del self.loss_G
-        gc.collect()
-
-        # D_A and D_B
-        self.set_requires_grad([self.netD_AB], True)
-        self.optimizer_D.zero_grad()  # set D_A and D_B's gradients to zero
-        self.backward_D_AB()  # calculate gradients for D_A
-
-        self.set_requires_grad([self.netD_BA], True)
-        self.backward_D_BA()  # calculate graidents for D_B
-        self.optimizer_D.step()  # update D_A and D_B's weights
-
-        del self.fake_A
-        del self.fake_B
-        del self.rec_A
-        del self.rec_B
-
         torch.no_grad()
         torch.cuda.empty_cache()
         gc.collect()

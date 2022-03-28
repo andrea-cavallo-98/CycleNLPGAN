@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
             data_A, data_B = train_dataset_bi_iter.__next__()
             model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
-            model.optimize_parameters_bilingual()   # calculate loss functions, get gradients, update network weights
+            model.optimize_parameters(supervised=True)   # calculate loss functions, get gradients, update network weights
 
             ###
             # Perform the UNSUPERVISED iterations
@@ -113,7 +113,7 @@ if __name__ == '__main__':
                 iter_start_time = time.time()  # timer for computation per iteration
 
                 model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
-                model.optimize_parameters_monolingual()   # calculate loss functions, get gradients, update network weights
+                model.optimize_parameters(supervised=False)   # calculate loss functions, get gradients, update network weights
 
 
             total_iters += opt.batch_size
