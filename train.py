@@ -53,6 +53,7 @@ if __name__ == '__main__':
         hyper_params = {
             "learning_rate": opt.lr,
             "batch_size": opt.batch_size,
+            "unsupervised_ratio": opt.ratio,
         }
         experiment.log_parameters(hyper_params)
     else:
@@ -73,7 +74,11 @@ if __name__ == '__main__':
 
     # Number of iterations per epoch is the min between length of parallel dataset and 
     # available batches in monolingual dataset divided by the ratio
-    n = min(len(train_dataset_bi.dataloader), len(train_dataset_A_mono.dataloader) / opt.ratio)
+    if opt.ratio > 0:
+        n = int(min(len(train_dataset_bi.dataloader), len(train_dataset_A_mono.dataloader) / opt.ratio))
+    else:
+        n = len(train_dataset_bi.dataloader)
+        
     previous_suffix = None
 
     print("\n\n ####### START TRAINING ######### \n\n")
@@ -97,7 +102,7 @@ if __name__ == '__main__':
             ###
             # Perform one SUPERVISED iteration
             ###
-            print("--- SUPERVISED iteration")
+            #print("--- SUPERVISED iteration")
 
             _, (data_A, data_B) = train_dataset_bi_iter.__next__()
             model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
@@ -106,9 +111,9 @@ if __name__ == '__main__':
             ###
             # Perform the UNSUPERVISED iterations
             ###
-            print("--- UNSUPERVISED iteration")
+            #print("--- UNSUPERVISED iteration")
             
-            for it in tqdm(range(opt.ratio)):
+            for it in range(opt.ratio):
                 _, data_A = train_dataset_A_mono_iter.__next__()
                 _, data_B = train_dataset_B_mono_iter.__next__()
 

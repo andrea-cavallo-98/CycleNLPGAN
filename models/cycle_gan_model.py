@@ -253,11 +253,17 @@ class CycleGANModel(BaseModel):
         self.optimizer_G.step()  # update G_A and G_B's weights
 
         if supervised:
-            del self.loss_G_AB_sup
-            del self.loss_G_BA_sup
-        del self.loss_G_AB
-        del self.loss_G_BA
-        del self.loss_G        
+            self.loss_G_AB_sup = self.loss_G_AB_sup.item()
+            self.loss_G_BA_sup = self.loss_G_BA_sup.item()
+            #del self.loss_G_AB_sup
+            #del self.loss_G_BA_sup
+        
+        self.loss_G_AB = self.loss_G_AB.item()
+        self.loss_G_BA = self.loss_G_BA.item()
+        self.loss_G = self.loss_G.item()
+        #del self.loss_G_AB
+        #del self.loss_G_BA
+        #del self.loss_G
         gc.collect()
         
         # D_A and D_B

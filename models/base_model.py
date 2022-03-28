@@ -143,7 +143,10 @@ class BaseModel(ABC):
         errors_ret = OrderedDict()
         for name in self.loss_names:
             if isinstance(name, str):
-                errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
+                try:
+                    errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
+                except Exception as e:
+                    print(e)
         return errors_ret
 
     def save_networks(self, epoch):
