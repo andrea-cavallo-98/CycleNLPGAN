@@ -97,7 +97,7 @@ if __name__ == '__main__':
             ###
             print("--- SUPERVISED iteration")
 
-            data_A, data_B = train_dataset_bi_iter.__next__()
+            _, (data_A, data_B) = train_dataset_bi_iter.__next__()
             model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
             model.optimize_parameters(supervised=True)   # calculate loss functions, get gradients, update network weights
 

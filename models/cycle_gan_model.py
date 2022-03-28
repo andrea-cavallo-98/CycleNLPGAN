@@ -252,8 +252,9 @@ class CycleGANModel(BaseModel):
         self.backward_G(supervised)  # calculate gradients for G_A and G_B
         self.optimizer_G.step()  # update G_A and G_B's weights
 
-        del self.loss_G_AB_sup
-        del self.loss_G_BA_sup
+        if supervised:
+            del self.loss_G_AB_sup
+            del self.loss_G_BA_sup
         del self.loss_G_AB
         del self.loss_G_BA
         del self.loss_G        

@@ -95,7 +95,7 @@ class ParallelDataset(BaseDataset):
 
 
     def __getitem__(self, idx):
-        return [self.data["en"].iloc[idx], self.data[self.target_language].iloc[idx]]
+        return self.data["en"].iloc[idx], self.data[self.target_language].iloc[idx]
 
 
 
