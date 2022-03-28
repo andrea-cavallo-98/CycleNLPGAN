@@ -97,6 +97,9 @@ if __name__ == '__main__':
 
         print("****** Epoch ", epoch, " *******")
         for i in tqdm(range(n)):  # inner loop within one epoch
+            
+            iter_start_time = time.time()  # timer for computation per iteration
+            
             epoch_iter += opt.batch_size
 
             ###
@@ -116,8 +119,6 @@ if __name__ == '__main__':
             for it in range(opt.ratio):
                 _, data_A = train_dataset_A_mono_iter.__next__()
                 _, data_B = train_dataset_B_mono_iter.__next__()
-
-                iter_start_time = time.time()  # timer for computation per iteration
 
                 model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
                 model.optimize_parameters(supervised=False)   # calculate loss functions, get gradients, update network weights
