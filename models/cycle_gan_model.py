@@ -60,15 +60,9 @@ class CycleGANModel(BaseModel):
             parser.add_argument('--lambda_D', type=float, default=10.0, help='scaling factor for discriminator loss')
             parser.add_argument('--lambda_A', type=float, default=10.0, help='weight for cycle loss (A -> B -> A)')
             parser.add_argument('--lambda_B', type=float, default=10.0, help='weight for cycle loss (B -> A -> B)')
-            parser.add_argument('--lambda_C_1', type=float, default=5.0,
-                                help='weight for embedding loss (fakeA -> fakeB)')  # aligment loss
-            parser.add_argument('--lambda_C_2', type=float, default=5.0,
-                                help='weight for embedding loss (fakeA -> recB, fakeB -> recA)')  # mixed loss
-            parser.add_argument('--lambda_C_3', type=float, default=2.5,
-                                help='weight for embedding loss (recA -> recB)')  # mixed loss (dubbio translation)
-            parser.add_argument('--lambda_identity', type=float, default=0,
-                                help='use identity mapping. Setting lambda_identity other than 0 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set lambda_identity = 0.1')
-            # 0.5
+            parser.add_argument('--lambda_A_sup', type=float, default=10.0, help='weight for supervised loss')
+            parser.add_argument('--lambda_B_sup', type=float, default=10.0, help='weight for supervised loss')
+           
         return parser
 
     def __init__(self, opt):
@@ -132,6 +126,8 @@ class CycleGANModel(BaseModel):
         self.loss_G_BA = 0
         self.loss_D_AB = 0
         self.loss_D_BA = 0
+        self.loss_G_AB_sup = 0
+        self.loss_G_BA_sup = 0
         self.loss_cycle_ABA = 0
         self.loss_cycle_BAB = 0
         self.loss_G = 0
@@ -150,15 +146,25 @@ class CycleGANModel(BaseModel):
         self.real_B = input_B
 
 
-    def forward(self):
+    def forward(self, supervised=False):
 
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B = self.netG_AB(self.real_A, None)  # G_A(A)
-        ### Add self.real_A as labels for second pass
-        self.rec_A, self.loss_cycle_ABA = self.netG_BA(self.fake_B, self.real_A)  # G_B(G_A(A))
 
-        self.fake_A = self.netG_BA(self.real_B, None)  # G_B(B)
-        self.rec_B, self.loss_cycle_BAB = self.netG_AB(self.fake_A, self.real_B)  # G_A(G_B(B))
+        if supervised:
+            self.fake_B, self.loss_G_AB_sup = self.netG_AB(self.real_A, self.real_B)  # G_A(A)
+            ### Add self.real_A as labels for second pass
+            self.rec_A, self.loss_cycle_ABA = self.netG_BA(self.fake_B, self.real_A)  # G_B(G_A(A))
+
+            self.fake_A, self.loss_G_BA_sup = self.netG_BA(self.real_B, self.real_A)  # G_B(B)
+            self.rec_B, self.loss_cycle_BAB = self.netG_AB(self.fake_A, self.real_B)  # G_A(G_B(B))
+
+        else:    
+            self.fake_B = self.netG_AB(self.real_A, None)  # G_A(A)
+            ### Add self.real_A as labels for second pass
+            self.rec_A, self.loss_cycle_ABA = self.netG_BA(self.fake_B, self.real_A)  # G_B(G_A(A))
+
+            self.fake_A = self.netG_BA(self.real_B, None)  # G_B(B)
+            self.rec_B, self.loss_cycle_BAB = self.netG_AB(self.fake_A, self.real_B)  # G_A(G_B(B))
 
 
     def backward_D_basic(self, netD, real_sent, fake_sent):
@@ -186,79 +192,49 @@ class CycleGANModel(BaseModel):
 
     def backward_D_AB(self):
         """Calculate GAN loss for discriminator D_A"""
-        # fake_B = self.fake_B_pool.query(self.fake_B)
         self.loss_D_AB = self.backward_D_basic(self.netD_AB, self.real_B, self.fake_B)
         self.loss_D_AB = self.loss_D_AB.item()
 
     def backward_D_BA(self):
         """Calculate GAN loss for discriminator D_B"""
-        # fake_A = self.fake_A_pool.query(self.fake_A)
         self.loss_D_BA = self.backward_D_basic(self.netD_BA, self.real_A, self.fake_A)
         self.loss_D_BA = self.loss_D_BA.item()
 
-    def backward_G(self):
+    def backward_G(self, supervised=False):
         """Calculate the loss for generators G_A and G_B"""
 
         lambda_G = self.opt.lambda_G
-        #lambda_idt = self.opt.lambda_identity
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
-        lambda_C_1 = self.opt.lambda_C_1
-        lambda_C_2 = self.opt.lambda_C_2
-        lambda_C_3 = self.opt.lambda_C_3
+        lambda_A_sup = self.opt.lambda_A_sup
+        lambda_B_sup = self.opt.lambda_B_sup
 
         # Loss G_AB is the one of the discriminator
         self.loss_G_AB = self.netD_AB(self.fake_B, 1).loss
-
-        #self.loss_G_AB = self.loss_G_AB * lambda_G
         self.loss_G_AB = self.loss_G_AB * 0.5 * lambda_G
 
         self.loss_G_BA = self.netD_BA(self.fake_A, 1).loss
-
-        #self.loss_G_BA = self.loss_G_BA * lambda_G
         self.loss_G_BA = self.loss_G_BA * 0.5 * lambda_G
 
-        # Forward cycle loss || G_B(G_A(A)) - A||
-        """
-        size_vector = torch.ones(
-            self.netG_AB.module.get_sentence_embedding_dimension()).to(self.device)
-
-        if lambda_A > 0.0:
-            self.loss_cycle_ABA = self.criterionCycle(self.fake_B_embeddings,
-                                                self.netG_AB.module.forward(self.rec_A, target_sentences=None, partial_value=True, generate_sentences=False)[1],
-                                                size_vector) * lambda_A
+        if supervised:
+            # combined loss and calculate gradients
+            self.loss_G = self.loss_G_AB + self.loss_G_BA + self.loss_cycle_ABA * lambda_A + self.loss_cycle_BAB * lambda_B + \
+                            self.loss_G_AB_sup * lambda_A_sup + self.loss_G_BA_sup * lambda_B_sup
         else:
-            self.loss_cycle_ABA = torch.tensor([0.0]).to(self.device)
-        """
-
-        # Backward cycle loss || G_A(G_B(B)) - B||
-        """
-        if lambda_B > 0.0:
-            self.loss_cycle_BAB = self.criterionCycle(self.fake_A_embeddings,
-                    self.netG_BA.module.forward(self.rec_B, target_sentences=None, partial_value=True, generate_sentences=False)[1],
-                    size_vector) * lambda_B
-        else:
-            self.loss_cycle_BAB = torch.tensor([0.0]).to(self.device)
-        """
-
-
-        # 'weight for embedding loss (fakeA -> recB, fakeB -> recA)')  # mixed loss
-        # 'weight for embedding loss (recA -> recB)')  # mixed loss (dubbio translation)
-
-        # combined loss and calculate gradients
-        self.loss_G = self.loss_G_AB + self.loss_G_BA + self.loss_cycle_ABA * lambda_A + self.loss_cycle_BAB * lambda_B  
+            # combined loss and calculate gradients
+            self.loss_G = self.loss_G_AB + self.loss_G_BA + self.loss_cycle_ABA * lambda_A + self.loss_cycle_BAB * lambda_B  
 
         self.loss_G.backward()
-
-        #del size_vector
 
         torch.cuda.empty_cache()
         gc.collect()
 
 
 
-    def optimize_parameters(self):
-        """Calculate losses, gradients, and update network weights; called in every training iteration"""
+    def optimize_parameters_monolingual(self):
+        """Calculate losses, gradients, and update network weights; called in every training iteration
+            perform UNSUPERVISED training
+        """
 
         self.netG_AB.train()
         self.netG_BA.train()
@@ -276,13 +252,12 @@ class CycleGANModel(BaseModel):
         self.backward_G()  # calculate gradients for G_A and G_B
         self.optimizer_G.step()  # update G_A and G_B's weights
 
-        #del self.loss_G_AB_1
-        #del self.loss_G_AB_2
-        #del self.loss_G_BA_1
-        #del self.loss_G_BA_2
-        del self.loss_G
+        del self.loss_G_AB_sup
+        del self.loss_G_BA_sup
+        del self.loss_G_AB
+        del self.loss_G_BA
+        del self.loss_G        
         gc.collect()
-
         
         # D_A and D_B
         self.set_requires_grad([self.netD_AB], True)
@@ -293,15 +268,56 @@ class CycleGANModel(BaseModel):
         self.backward_D_BA()  # calculate graidents for D_B
         self.optimizer_D.step()  # update D_A and D_B's weights
 
-        #del self.fake_A_embeddings
-        #del self.fake_B_embeddings
-        #del self.rec_A_embeddings
-        #del self.rec_B_embeddings
         del self.fake_A
         del self.fake_B
         del self.rec_A
         del self.rec_B
-        #del self.loss_G
+        torch.no_grad()
+        torch.cuda.empty_cache()
+        gc.collect()
+
+
+    def optimize_parameters_bilingual(self):
+        """Calculate losses, gradients, and update network weights; called in every training iteration
+            perform SUPERVISED training"""
+
+        self.netG_AB.train()
+        self.netG_BA.train()
+        self.netD_AB.train()
+        self.netD_BA.train()
+
+        # forward
+        self.forward(supervised=True)  
+        gc.collect()
+
+        self.set_requires_grad([self.netD_AB, self.netD_BA], False)
+        torch.enable_grad()
+
+        self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
+        self.backward_G(supervised=True)  # calculate gradients for G_A and G_B
+        self.optimizer_G.step()  # update G_A and G_B's weights
+
+        del self.loss_G_AB_sup
+        del self.loss_G_BA_sup
+        del self.loss_G_AB
+        del self.loss_G_BA
+        del self.loss_G
+        gc.collect()
+
+        # D_A and D_B
+        self.set_requires_grad([self.netD_AB], True)
+        self.optimizer_D.zero_grad()  # set D_A and D_B's gradients to zero
+        self.backward_D_AB()  # calculate gradients for D_A
+
+        self.set_requires_grad([self.netD_BA], True)
+        self.backward_D_BA()  # calculate graidents for D_B
+        self.optimizer_D.step()  # update D_A and D_B's weights
+
+        del self.fake_A
+        del self.fake_B
+        del self.rec_A
+        del self.rec_B
+
         torch.no_grad()
         torch.cuda.empty_cache()
         gc.collect()

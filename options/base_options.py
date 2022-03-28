@@ -48,6 +48,16 @@ class BaseOptions():
         parser.add_argument('--comet_key', default=None, type=str, help='Comet API key to log some metrics')
         parser.add_argument('--comet_exp_name', default=None, type=str, help='Comet experiment name (used only if comet_key is not None')
         parser.add_argument('--comet_workspace', default=None, type=str, help='Comet workspace name (usually username in Comet, used only if comet_key is not None')
+        
+        # dataset paths
+        parser.add_argument('--path1_mono', type=str, default='../ALT-Parallel-Corpus-20191206/data_en.txt', help='path to .txt file containing first language for monolingual training')
+        parser.add_argument('--path2_mono', type=str, default='../ALT-Parallel-Corpus-20191206/data_vi.txt', help='path to .txt file containing second language for monolingual training')
+        parser.add_argument('--path1_bi', type=str, default='../ALT-Parallel-Corpus-20191206/data_en.txt', help='path to .txt file containing first language for bilingual training')
+        parser.add_argument('--path2_bi', type=str, default='../ALT-Parallel-Corpus-20191206/data_vi.txt', help='path to .txt file containing second language for bilingual training')
+        parser.add_argument('--target_lang', type=str, default='vi', help='ISO code of target language')
+        
+        parser.add_argument('--ratio', type=int, default=1, help='ratio of unsupervised/supervised training')
+
         self.initialized = True
         return parser
 

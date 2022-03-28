@@ -12,36 +12,22 @@ from tqdm import tqdm
 
 from data import BaseDataset
 import urllib.request
-
+import pandas as pd
 
 
 
 class MonolingualDataset(BaseDataset):
     """
     Mono-lingual dataset
-
     """
 
     def __init__(self, opt, path):
-        """
-        Parallel sentences dataset reader to train student model given a teacher model
-        :param opt: options used to create and read the dataset
-        """
         BaseDataset.__init__(self, opt)
         self.path = path
         self.data = []
 
 
     def load_data(self, seed=25):
-        """
-        Reads in a tab-seperated .txt/.csv/.tsv or .gz file. The different columns contain the different translations of the sentence in the first column
-
-        :param filepath: Filepath to the file
-        :param weight: If more that one dataset is loaded with load_data: With which frequency should data be sampled from this dataset?
-        :param max_sentences: Max number of lines to be read from filepath
-        :param max_sentence_length: Skip the example if one of the sentences is has more characters than max_sentence_length
-        :return:
-        """
 
         filepath = self.path
         sentences = []
@@ -66,10 +52,52 @@ class MonolingualDataset(BaseDataset):
 
 
     def __getitem__(self, idx):
-
         return self.data[idx]
 
 
+
+
+
+class ParallelDataset(BaseDataset):
+    """
+    Bi-lingual parallel dataset
+    """
+
+    def __init__(self, opt):
+        """
+        parameters:
+            path1: path of the txt file containing one of the languages
+            path2: path of the other language
+        """
+
+        BaseDataset.__init__(self, opt)
+        self.path1 = opt.path1_bi
+        self.path2 = opt.path2_bi
+        self.data = []
+        self.target_language = opt.target_lang
+
+
+    def load_data(self, seed=25):
+
+        df_en = pd.read_csv(self.path1, sep='\t', header=None, names=["id", "en"])
+        df_target = pd.read_csv(self.path2, sep='\t', header=None, names=["id", self.target_language])
+        df_en = df_en.set_index("id")
+        df_target = df_target.set_index("id")
+        df_en_target = df_en.join(df_target)
+        df_en_target.dropna(inplace=True)
+                
+        self.data = df_en_target
+
+        random.seed(seed)
+        random.shuffle(self.data)
+
+
+    def __len__(self):
+        return len(self.data)
+
+
+    def __getitem__(self, idx):
+        return [self.data["en"].iloc[idx], self.data[self.target_language].iloc[idx]]
 
 
 

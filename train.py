@@ -59,63 +59,20 @@ if __name__ == '__main__':
         experiment = None
     
 
-    #train_dataset, eval_dataset, test_dataset = create_dataset(opt, model)  # create a dataset given opt.dataset_mode and other options
-    train_dataset_A, train_dataset_B, eval_dataset_A, eval_dataset_B = create_dataset(opt, model)
-    dataset_size = len(train_dataset_A)    # get the number of images in the dataset.
+    (train_dataset_A_mono, train_dataset_B_mono, eval_dataset_A_mono, eval_dataset_B_mono), \
+        (train_dataset_bi, eval_dataset_bi) = create_dataset(opt)
+    dataset_size = len(train_dataset_A_mono)    # get the number of images in the dataset.
     logging.info('The number of training sentences = %d' % dataset_size)
-    logging.info('The number of evaluation sentences = %d' % len(eval_dataset_A))
-    logging.info('The number of evaluation sentences = %d' % len(eval_dataset_B))
-   # logging.info('The number of test sentences = %d' % len(test_dataset))
-    logging.info('The number of training batches = %d' % len(train_dataset_A.dataloader))
-    logging.info('The number of evaluation batches = %d' % len(eval_dataset_A.dataloader))
-    #logging.info('The number of test batches = %d' % len(test_dataset.dataloader))
+    logging.info('The number of evaluation sentences = %d' % len(eval_dataset_A_mono))
+    logging.info('The number of evaluation sentences = %d' % len(eval_dataset_B_mono))
+    logging.info('The number of training batches = %d' % len(train_dataset_A_mono.dataloader))
+    logging.info('The number of evaluation batches = %d' % len(eval_dataset_A_mono.dataloader))
 
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = opt.iter_count                # the total number of training iterations
 
-    n = len(train_dataset_A.dataloader)
-
-    """
-    n = round(opt.iter_count/opt.batch_size) #NBatch totali
-    n -= (opt.epoch_count-1)*(round(len(train_dataset_A)/opt.batch_size))
-    n -= 1
-    """
+    n = len(train_dataset_bi.dataloader)
     previous_suffix = None
-
-    """
-    if not opt.continue_train:
-
-        eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
-        eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
-
-        for j in range(20):  # inner loop within one epoch
-
-            _, eval_data_A = eval_dataset_A_iter.__next__()
-            _, eval_data_B = eval_dataset_B_iter.__next__()
-            model.set_input(eval_data_A, eval_data_B)  # unpack data from dataset and apply preprocessing
-            model.evaluate(sentences_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sentence.txt"), 
-                            sacre_file=os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"))
-            gc.collect()
-
-
-        with open(os.path.join(opt.checkpoints_dir, opt.name, "0_0_sacre.tsv"), "r", encoding='utf8') as sacre_file:
-            lines = sacre_file.read().split("\n")
-            avg_fake_A = [float(e.split("\t")[0]) for e in lines if e != ""]
-            avg_rec_A = [float(e.split("\t")[1]) for e in lines if e != ""]
-            avg_fake_B = [float(e.split("\t")[2]) for e in lines if e != ""]
-            avg_rec_B = [float(e.split("\t")[3]) for e in lines if e != ""]
-            avg_fake_A = sum(avg_fake_A)/len(avg_fake_A)
-            avg_rec_A = sum(avg_rec_A)/len(avg_rec_A)
-            avg_fake_B = sum(avg_fake_B)/len(avg_fake_B)
-            avg_rec_B = sum(avg_rec_B)/len(avg_rec_B)
-        logging.info("BLEU real-fake A:" + str(avg_fake_A))
-        logging.info("BLEU distance real-rec A:" + str(avg_rec_A))
-        logging.info("BLEU distance real-fake B:" + str(avg_fake_B))
-        logging.info("BLEU distance real-rec B:" + str(avg_rec_B))
-        fw = open(os.path.join(opt.checkpoints_dir, opt.name, "average_sacre.tsv"), "a", encoding='utf8')
-        fw.write("0\t0\t" + str(avg_fake_A) + "\t" + str(avg_rec_A) + "\t" + str(avg_fake_B) + "\t" + str(avg_rec_B) + "\n")
-        fw.close()
-    """
 
     print("\n\n ####### START TRAINING ######### \n\n")
 
@@ -127,25 +84,37 @@ if __name__ == '__main__':
 
         visualizer.print_current_lr(epoch, model.get_learning_rate())
 
-        train_dataset_A_iter = enumerate(train_dataset_A.dataloader)
-        train_dataset_B_iter = enumerate(train_dataset_B.dataloader)
+        train_dataset_A_mono_iter = enumerate(train_dataset_A_mono.dataloader)
+        train_dataset_B_mono_iter = enumerate(train_dataset_B_mono.dataloader)
+        train_dataset_bi_iter = enumerate(train_dataset_bi.dataloader)
 
         print("****** Epoch ", epoch, " *******")
         for i in tqdm(range(n)):  # inner loop within one epoch
             epoch_iter += opt.batch_size
 
-            _, data_A = train_dataset_A_iter.__next__()
-            _, data_B = train_dataset_B_iter.__next__()
+            ###
+            # Perform one SUPERVISED iteration
+            ###
+            print("--- SUPERVISED iteration")
 
-            #if epoch == opt.epoch_count:
-            #    if n > 0:
-            #        n -= 1
-            #        continue
-            iter_start_time = time.time()  # timer for computation per iteration
-
+            data_A, data_B = train_dataset_bi_iter.__next__()
             model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
+            model.optimize_parameters_bilingual()   # calculate loss functions, get gradients, update network weights
 
-            model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
+            ###
+            # Perform the UNSUPERVISED iterations
+            ###
+            print("--- UNSUPERVISED iteration")
+            
+            for it in tqdm(range(opt.ratio)):
+                _, data_A = train_dataset_A_mono_iter.__next__()
+                _, data_B = train_dataset_B_mono_iter.__next__()
+
+                iter_start_time = time.time()  # timer for computation per iteration
+
+                model.set_input(data_A, data_B)         # unpack data from dataset and apply preprocessing
+                model.optimize_parameters_monolingual()   # calculate loss functions, get gradients, update network weights
+
 
             total_iters += opt.batch_size
 
@@ -159,7 +128,6 @@ if __name__ == '__main__':
                 if experiment is not None:
                     for k, v in losses.items():
                         experiment.log_metric(f"{k}:", v, step=total_iters)
-
 
             if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
                 logging.info('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iters))
@@ -175,8 +143,8 @@ if __name__ == '__main__':
                 sentences_filename = str(epoch)+"_"+str(total_iters)+"_eval_sentences.txt"
                 sentences_filename = os.path.join(opt.checkpoints_dir, opt.name, sentences_filename)
                 
-                eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
-                eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
+                eval_dataset_A_iter = enumerate(eval_dataset_A_mono.dataloader)
+                eval_dataset_B_iter = enumerate(eval_dataset_B_mono.dataloader)
                 
                 for j in tqdm(range(5)):  # inner loop within one epoch
                     _, eval_data_A = eval_dataset_A_iter.__next__()
@@ -244,8 +212,8 @@ if __name__ == '__main__':
         with open(sacre_filename, "a", encoding='utf8') as sacre_file:
             sacre_file.write("NEW EPOCH:\n")
 
-        eval_dataset_A_iter = enumerate(eval_dataset_A.dataloader)
-        eval_dataset_B_iter = enumerate(eval_dataset_B.dataloader)
+        eval_dataset_A_iter = enumerate(eval_dataset_A_mono.dataloader)
+        eval_dataset_B_iter = enumerate(eval_dataset_B_mono.dataloader)
         for j in range(n):  # inner loop within one epoch
             _, eval_data_A = eval_dataset_A_iter.__next__()
             _, eval_data_B = eval_dataset_B_iter.__next__()

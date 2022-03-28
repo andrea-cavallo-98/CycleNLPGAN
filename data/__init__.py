@@ -16,7 +16,7 @@ import os
 import torch.utils.data
 
 from .BaseDataset import BaseDataset
-from .ParallelSentencesDataset import ParallelSentencesDataset, MonolingualDataset
+from .ParallelSentencesDataset import ParallelDataset, MonolingualDataset
 
 
 def find_dataset_using_name(dataset_type):
@@ -47,7 +47,7 @@ def get_option_setter(dataset_type):
     return dataset_class.modify_commandline_options
 
 
-def create_dataset(opt, model):
+def create_dataset(opt):
     """Create a dataset given the option.
 
     This function wraps the class CustomDatasetDataLoader.
@@ -59,19 +59,25 @@ def create_dataset(opt, model):
     """
     assert opt.train_percentage+opt.eval_percentage+opt.test_percentage == 1.0
 
-    train_data_loader_A = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_en.txt")
-    train_data_loader_B = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_vi.txt")
+    ### Create monolingual dataset objects
+    train_data_loader_A_mono = CustomDatasetDataLoader(opt, opt.path1_mono, parallel=False)
+    train_data_loader_B_mono = CustomDatasetDataLoader(opt, opt.path2_mono, parallel=False)
 
-    eval_data_loader_A = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_en.txt")
-    eval_data_loader_B = CustomDatasetDataLoader(opt, "../ALT-Parallel-Corpus-20191206/data_vi.txt")
+    eval_data_loader_A_mono = CustomDatasetDataLoader(opt, opt.path1_mono, parallel=False)
+    eval_data_loader_B_mono = CustomDatasetDataLoader(opt, opt.path2_mono, parallel=False)
 
-    return train_data_loader_A, train_data_loader_B, eval_data_loader_A, eval_data_loader_B
+    ### Create parallel multilingual dataset objects
+    train_data_loader_bi = CustomDatasetDataLoader(opt, None, parallel=True)
+    eval_data_loader_bi = CustomDatasetDataLoader(opt, None, parallel=True)
+    
+    return (train_data_loader_A_mono, train_data_loader_B_mono, eval_data_loader_A_mono, eval_data_loader_B_mono), \
+                (train_data_loader_bi, eval_data_loader_bi)
 
 
 class CustomDatasetDataLoader():
     """Wrapper class of Dataset class that performs multi-threaded data loading"""
 
-    def __init__(self, opt, path):
+    def __init__(self, opt, path, parallel=False):
         """Initialize this class
 
         Step 1: create a dataset instance given the name [dataset_mode]
@@ -82,9 +88,11 @@ class CustomDatasetDataLoader():
         self.eval_perc = opt.eval_percentage
         self.test_perc = opt.test_percentage
 
-        #dataset_class = find_dataset_using_name(opt.dataset_mode)
-        self.dataset = MonolingualDataset(opt, path)
-        #self.dataset = dataset_class(opt, self.train_perc, self.eval_perc, self.test_perc)
+        if parallel:
+            self.dataset = ParallelDataset(opt)
+        else:
+            self.dataset = MonolingualDataset(opt, path)
+        
         self.dataset.load_data()
 
         n_threads = int(opt.num_threads)
@@ -97,7 +105,6 @@ class CustomDatasetDataLoader():
 
     def load_data(self):
         return self
-
 
     def __len__(self):
         """Return the number of data in the dataset"""
