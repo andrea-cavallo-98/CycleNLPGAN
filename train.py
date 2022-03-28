@@ -71,7 +71,9 @@ if __name__ == '__main__':
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = opt.iter_count                # the total number of training iterations
 
-    n = len(train_dataset_bi.dataloader)
+    # Number of iterations per epoch is the min between length of parallel dataset and 
+    # available batches in monolingual dataset divided by the ratio
+    n = min(len(train_dataset_bi.dataloader), len(train_dataset_A_mono.dataloader) / opt.ratio)
     previous_suffix = None
 
     print("\n\n ####### START TRAINING ######### \n\n")
