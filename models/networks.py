@@ -114,10 +114,10 @@ def define_language(language):
     return ret_val
 
 
-def define_Gs(task, net_type, source='de', dest='en', gpu_ids=[], freeze_GB_encoder=False):
+def define_Gs(task, net_type, source, dest, init_dest, gpu_ids=[], freeze_GB_encoder=False):
 
-    netA = define_G(net_type, source, dest, gpu_ids, use_init_net=False, freeze_encoder=False)
-    netB = define_G(net_type, dest, source, gpu_ids, use_init_net=False, freeze_encoder=freeze_GB_encoder)
+    netA = define_G(net_type, source, dest, init_dest, gpu_ids, use_init_net=False, freeze_encoder=False)
+    netB = define_G(net_type, dest, source, init_dest, gpu_ids, use_init_net=False, freeze_encoder=freeze_GB_encoder)
     netA.model.base_model.train()
     netB.model.base_model.train()
 
@@ -133,7 +133,7 @@ def define_Gs(task, net_type, source='de', dest='en', gpu_ids=[], freeze_GB_enco
     return netA, netB
 
 
-def define_G(model, source='en', dest='de', gpu_ids=[], use_init_net= True, freeze_encoder=False):
+def define_G(model, source, dest, init_dest, gpu_ids=[], use_init_net= True, freeze_encoder=False):
     """Create a generator
 
     Parameters:
@@ -166,9 +166,11 @@ def define_G(model, source='en', dest='de', gpu_ids=[], use_init_net= True, free
         tgt_lang = define_language(dest)
         model_name = 't5-small'
         net = EncDecT5Model(model_name, freeze_encoder=freeze_encoder, source_language=src_lang, target_language=tgt_lang)
+
     elif model == 'marianMT':
-        model_name = 'Helsinki-NLP/opus-mt-'+source+'-'+dest
+        model_name = 'Helsinki-NLP/opus-mt-'+source+'-'+init_dest
         net = EncDecModel(model_name, freeze_encoder=freeze_encoder, source_lang=source, target_lang=dest)
+    
     else:
         net = EncoderDecoderModel.from_encoder_decoder_pretrained('bert-base-cased', 'bert-base-german-cased')    #net=SentenceTransformer(netG)
 

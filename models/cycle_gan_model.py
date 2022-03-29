@@ -50,7 +50,8 @@ class CycleGANModel(BaseModel):
         parser.add_argument('--network_type', type=str, default='marianMT',
                             help='specify generator architecture and language [marianMT|t5]')
 
-        parser.add_argument('--language', type=str, default='it', help='specify destination language')
+        parser.add_argument('--language', type=str, default='vi', help='specify destination language')
+        parser.add_argument('--init-language', type=str, default='zh', help='specify destination language of original model (en-XX)')
 
         parser.set_defaults(no_dropout=True)  # default CycleGAN did not use dropout
         if is_train:
@@ -85,7 +86,7 @@ class CycleGANModel(BaseModel):
         # The naming is different from those used in the paper.
         # Code (vs. paper): G_A (G), G_B (F), D_A (D_Y), D_B (D_X)
 
-        self.netG_AB, self.netG_BA = networks.define_Gs(opt.task, opt.network_type, opt.language, 'en', self.gpu_ids, opt.freeze_GB_encoder)
+        self.netG_AB, self.netG_BA = networks.define_Gs(opt.task, opt.network_type, 'en', opt.language, opt.init_language, self.gpu_ids, opt.freeze_GB_encoder)
 
         if self.isTrain:  # define discriminators
 
